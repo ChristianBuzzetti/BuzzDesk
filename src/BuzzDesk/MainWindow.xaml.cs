@@ -83,6 +83,9 @@ public partial class MainWindow : Window
         NavTasksCount.Text = open > 0 ? open.ToString() : "";
         var habits = Habits.List(Clock.Today).Where(h => h.AppliesOn(Clock.Today)).ToList();
         NavHabitsCount.Text = habits.Count > 0 ? habits.Count(h => h.DoneToday) + "/" + habits.Count : "";
+        var lists = Checklists.List();
+        int pendingItems = lists.Sum(l => l.Items - l.Done);
+        NavListsCount.Text = lists.Count == 0 ? "" : pendingItems > 0 ? pendingItems.ToString() : lists.Count.ToString();
         int links = Links.Count();
         NavLinksCount.Text = links > 0 ? links.ToString() : "";
         var (review, _, openTopics) = Topics.Counts(Clock.Today);
@@ -194,6 +197,7 @@ public partial class MainWindow : Window
         "links" => new LinksView(),
         "search" => new SearchView(),
         "habits" => new HabitsView(),
+        "lists" => new ListsView(),
         _ => new TodayView(),
     };
 
@@ -451,6 +455,13 @@ public partial class MainWindow : Window
 
     /// <summary>Screenshots: types in the search box and runs it at once.</summary>
     internal void ShotSearch(string text) { Search.Text = text; RunSearch(null, EventArgs.Empty); }
+
+    /// <summary>Opens a list (from search or quick capture).</summary>
+    public void OpenList(long id)
+    {
+        Navigate("lists");
+        ((ListsView)views["lists"]).Select(id);
+    }
 
     /// <summary>Selects a link in Links (from search).</summary>
     public void OpenLink(long id)

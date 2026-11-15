@@ -28,7 +28,7 @@ public sealed class QuickCaptureWindow : Window
 
     QuickCaptureWindow()
     {
-        mode = Store.Settings.QuickMode is "task" or "note" or "reminder" or "link" ? Store.Settings.QuickMode : "task";
+        mode = Store.Settings.QuickMode is "task" or "note" or "reminder" or "link" or "list" ? Store.Settings.QuickMode : "task";
         SetResourceReference(StyleProperty, typeof(Window));
         WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize; ShowInTaskbar = false; Topmost = true;
         Width = 540; SizeToContent = SizeToContent.Height;
@@ -50,7 +50,7 @@ public sealed class QuickCaptureWindow : Window
         head.Children.Add(title);
         root.Children.Add(head);
 
-        foreach (var (key, label, glyph) in new[] { ("task", L.T("Pendiente"), ""), ("note", L.T("Nota"), ""), ("reminder", L.T("Recordatorio"), ""), ("link", L.T("Enlace"), "") })
+        foreach (var (key, label, glyph) in new[] { ("task", L.T("Pendiente"), ""), ("note", L.T("Nota"), ""), ("reminder", L.T("Recordatorio"), ""), ("link", L.T("Enlace"), "") , ("list", L.T("Lista"), "") })
         {
             var content = new StackPanel { Orientation = Orientation.Horizontal };
             var g = Ui.Glyph(glyph, 12, "Muted"); g.Margin = new Thickness(0, 0, 6, 0);
@@ -138,6 +138,14 @@ public sealed class QuickCaptureWindow : Window
             foreach (var t in Topics.List(TopicScope.Open, Clock.Today)) target.Items.Add(new ComboBoxItem { Content = t.Title, Tag = t.Id });
             target.SelectedIndex = 0;
         }
+        else if (m == "list")
+        {
+            targetLabel.Text = L.T("En la lista");
+            var all = Checklists.List();
+            foreach (var l in all) target.Items.Add(new ComboBoxItem { Content = l.Name, Tag = l.Id });
+            target.Items.Add(new ComboBoxItem { Content = L.T("(Lista nueva…)"), Tag = -1L });
+            target.SelectedItem = target.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (long)i.Tag == Store.Settings.QuickListId) ?? target.Items[0];
+        }
         else targetRow.Visibility = Visibility.Collapsed;
         UpdatePreview();
     }
@@ -167,6 +175,13 @@ public sealed class QuickCaptureWindow : Window
                 if (p.Time is TimeOnly t) parts.Add(L.F("aviso a las {0}", Fmt.Time(t)));
                 break;
             case "note": parts.Add("✎ " + Short(text)); break;
+            case "list":
+            {
+                var names = ListsView.Split(text).ToList();
+                parts.Add("☐ " + string.Join(" · ", names.Take(8)) + (names.Count > 8 ? " …" : ""));
+                preview.Text = string.Join("  ·  ", parts);
+                return;
+            }
             case "reminder":
                 if (When(p) is DateTime utc) parts.Add("⏰ " + Fmt.When(utc) + " · " + (p.Title.Length > 0 ? p.Title : "?"));
                 else { preview.Text = L.T("¿Cuándo? Agregá una hora o un día: 15:30, mañana 9, viernes."); preview.SetResourceReference(TextBlock.ForegroundProperty, "Accent"); return; }
@@ -186,6 +201,7 @@ public sealed class QuickCaptureWindow : Window
         "task" => L.T("Ej.: Revisar backups de PROD !3 mañana 9:30 #dba"),
         "note" => L.T("Ej.: Infra confirma la ventana del sábado 22 hs"),
         "reminder" => L.T("Ej.: Llamar a Mariela 15:30"),
+        "list" => L.T("Ej.: leche, pan, café, yerba"),
         _ => L.T("Ej.: https://grafana.local/d/sql Grafana SQL #mon"),
     };
 
@@ -207,14 +223,14 @@ public sealed class QuickCaptureWindow : Window
         bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0, shift = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
         if (e.Key == Key.Escape) { draft = ""; SafeClose(); e.Handled = true; }
         else if (e.Key == Key.Tab) { userPickedMode = true; Cycle(shift ? -1 : 1); e.Handled = true; }
-        else if (ctrl && e.Key is >= Key.D1 and <= Key.D4) { userPickedMode = true; SetMode(new[] { "task", "note", "reminder", "link" }[e.Key - Key.D1]); e.Handled = true; }
-        else if (e.Key == Key.Enter && shift && mode == "note") { int i = box.CaretIndex; box.Text = box.Text.Insert(i, "\n"); box.CaretIndex = i + 1; e.Handled = true; }
+        else if (ctrl && e.Key is >= Key.D1 and <= Key.D5) { userPickedMode = true; SetMode(new[] { "task", "note", "reminder", "link", "list" }[e.Key - Key.D1]); e.Handled = true; }
+        else if (e.Key == Key.Enter && shift && mode is "note" or "list") { int i = box.CaretIndex; box.Text = box.Text.Insert(i, "\n"); box.CaretIndex = i + 1; e.Handled = true; }
         else if (e.Key == Key.Enter) { Save(); e.Handled = true; }
     }
 
     void Cycle(int step)
     {
-        var all = new[] { "task", "note", "reminder", "link" };
+        var all = new[] { "task", "note", "reminder", "link", "list" };
         SetMode(all[(Array.IndexOf(all, mode) + step + all.Length) % all.Length]);
     }
 
@@ -251,6 +267,19 @@ public sealed class QuickCaptureWindow : Window
                 Reminders.Add(utc, title: p.Title);
                 done = L.F("Recordatorio: {0} · {1}", p.Title, Fmt.When(utc));
                 App.Current.OfferStartup(null);
+                break;
+            }
+            case "list":
+            {
+                long listId = selected;
+                if (listId <= 0)
+                {
+                    if (PromptWindow.Ask(this, L.T("Nueva lista"), L.T("Nombre:"), "") is not { } name || name.Trim().Length == 0) return;
+                    listId = Checklists.FindOrCreate(name);
+                }
+                int n = Checklists.AddItems(listId, ListsView.Split(text));
+                Store.Settings.QuickListId = listId;
+                done = L.F("{0} en {1}", L.Count(n, "ítem", "ítems"), Checklists.Get(listId)?.Name ?? "");
                 break;
             }
             default:

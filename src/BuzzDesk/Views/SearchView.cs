@@ -44,7 +44,7 @@ public sealed class SearchView : DeskView
         hits = query.Length == 0 ? [] : Search.Run(query);
         subheading.Text = L.Count(hits.Count, "resultado", "resultados");
         list.Items.Clear();
-        foreach (var (kind, label) in new[] { ("task", L.T("Pendientes")), ("topic", L.T("Temas")), ("note", L.T("Notas")), ("link", L.T("Enlaces")) })
+        foreach (var (kind, label) in new[] { ("task", L.T("Pendientes")), ("topic", L.T("Temas")), ("note", L.T("Notas")), ("link", L.T("Enlaces")), ("checklist", L.T("Listas")), ("bill", L.T("Pagos y vencimientos")), ("date", L.T("Fechas importantes")) })
         {
             var group = hits.Where(h => h.Kind == kind).ToList();
             if (group.Count == 0) continue;
@@ -60,7 +60,7 @@ public sealed class SearchView : DeskView
         var grid = new Grid { MinHeight = 44, Background = System.Windows.Media.Brushes.Transparent, Cursor = Cursors.Hand };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
         grid.ColumnDefinitions.Add(new ColumnDefinition());
-        var glyph = Ui.Glyph(h.Kind switch { "task" => "", "topic" => "", "note" => "", _ => "" }, 13);
+        var glyph = Ui.Glyph(h.Kind switch { "task" => "", "topic" => "", "note" => "", "checklist" => "", "bill" => "", "date" => "", _ => "" }, 13);
         glyph.HorizontalAlignment = HorizontalAlignment.Center;
         grid.Children.Add(glyph);
         var text = new StackPanel { Margin = new Thickness(0, 6, 8, 6), VerticalAlignment = VerticalAlignment.Center };
@@ -120,6 +120,9 @@ public sealed class SearchView : DeskView
             case "topic": main.OpenTopic(h.RefId); break;
             case "note": if (h.TopicId is long topic) main.OpenTopic(topic); else main.Navigate("today"); break;
             case "link": main.OpenLink(h.RefId); break;
+            case "checklist": main.OpenList(h.RefId); break;
+            case "bill": main.Navigate("bills"); break;
+            case "date": main.Navigate("dates"); break;
         }
     }
 }
