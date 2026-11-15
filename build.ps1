@@ -1,10 +1,13 @@
-﻿param([switch]$Shot, [switch]$Zip, [switch]$Msix, [switch]$TestSign, [string]$Output = '')
+﻿param([switch]$Shot, [switch]$Zip, [switch]$Msix, [switch]$TestSign, [switch]$Sign, [string]$CertThumbprint = '', [string]$Pfx = '', [string]$Output = '')
 # Compila y publica BuzzDesk autocontenido (incluye .NET 10, no requiere instalar nada).
 # -Shot genera además las capturas del README en docs\ (base de datos de demostración temporal, nunca tus datos).
 # -Zip arma además artifacts\BuzzDesk-<versión>-win-x64.zip para distribuir.
 # -Msix arma además artifacts\store\BuzzDesk_<versión>.0_x64.msix para Microsoft Store: compilación STORE
 #      (inicio con Windows por StartupTask), logos y resources.pri. La identidad sale de packaging\store.json
 #      (valores de Partner Center). El .msix va sin firmar: la Store lo firma.
+# -Sign firma BuzzDesk.exe y BuzzDesk.dll con Authenticode (y sello de tiempo) antes del zip: con -CertThumbprint
+#      (certificado de firma de código en Cert:\CurrentUser\My) o -Pfx archivo.pfx (contraseña en $env:BUZZDESK_PFX_PASSWORD).
+#      Un ejecutable firmado es lo que más reduce los bloqueos de antivirus y de SmartScreen.
 # -TestSign (con -Msix) deja también un ..._test.msix firmado con un certificado autofirmado del usuario actual
 #      (CN = Publisher de store.json) y exporta el .cer, para instalarlo en esta PC antes de subirlo.
 $ErrorActionPreference = 'Stop'
@@ -17,6 +20,37 @@ if ($running.Count) { throw "BuzzDesk está abierto desde $Output. Cerralo (band
 & $dotnet publish $project -c Release -r win-x64 --self-contained true -o $Output --nologo
 if ($LASTEXITCODE -ne 0) { throw 'La publicación falló.' }
 Write-Output "BuzzDesk publicado en $Output"
+
+# Herramientas del Windows SDK (makeappx, makepri, signtool) desde el paquete NuGet oficial de Microsoft.
+function Get-SdkBin {
+    $btVersion = '10.0.28000.2957'
+    $cache = Join-Path $PSScriptRoot 'artifacts\cache'
+    $bt = Join-Path $cache "sdk-buildtools-$btVersion"
+    if (-not (Test-Path -LiteralPath (Join-Path $bt 'bin'))) {
+        New-Item -ItemType Directory -Force $cache | Out-Null
+        $nupkg = Join-Path $cache "sdk-buildtools-$btVersion.zip"
+        Invoke-WebRequest -UseBasicParsing "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/$btVersion/microsoft.windows.sdk.buildtools.$btVersion.nupkg" -OutFile $nupkg
+        Expand-Archive -LiteralPath $nupkg -DestinationPath $bt -Force
+        Remove-Item -LiteralPath $nupkg
+    }
+    Get-ChildItem -LiteralPath (Join-Path $bt 'bin') -Directory | Sort-Object Name | Select-Object -Last 1 | ForEach-Object { Join-Path $_.FullName 'x64' }
+}
+
+if ($Sign) {
+    $signtool = Join-Path (Get-SdkBin) 'signtool.exe'
+    $files = @((Join-Path $Output 'BuzzDesk.exe'), (Join-Path $Output 'BuzzDesk.dll'))
+    $common = @('sign', '/fd', 'SHA256', '/tr', 'http://timestamp.digicert.com', '/td', 'SHA256')
+    if ($Pfx) {
+        if (-not $env:BUZZDESK_PFX_PASSWORD) { throw 'Falta la contraseña del .pfx en $env:BUZZDESK_PFX_PASSWORD.' }
+        & $signtool @common /f $Pfx /p $env:BUZZDESK_PFX_PASSWORD @files
+    } elseif ($CertThumbprint) {
+        & $signtool @common /sha1 $CertThumbprint /s My @files
+    } else { throw '-Sign necesita -CertThumbprint o -Pfx.' }
+    if ($LASTEXITCODE -ne 0) { throw 'La firma falló.' }
+    & $signtool verify /pa /q @files
+    if ($LASTEXITCODE -ne 0) { throw 'La firma no verifica.' }
+    Write-Output 'BuzzDesk.exe y BuzzDesk.dll firmados.'
+}
 if ($Zip) {
     $version = ([xml](Get-Content -LiteralPath $project -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
     $zipName = 'BuzzDesk'
@@ -47,16 +81,8 @@ if ($Msix) {
     & $dotnet publish $project -c Release -r win-x64 --self-contained true -o $stage --nologo -p:Store=true
     if ($LASTEXITCODE -ne 0) { throw 'La publicación STORE falló.' }
 
-    # 2. Herramientas del Windows SDK (makeappx, makepri, signtool) desde el paquete NuGet oficial de Microsoft.
-    $btVersion = '10.0.28000.2957'
-    $bt = Join-Path $cache "sdk-buildtools-$btVersion"
-    if (-not (Test-Path -LiteralPath (Join-Path $bt 'bin'))) {
-        $nupkg = Join-Path $cache "sdk-buildtools-$btVersion.zip"
-        Invoke-WebRequest -UseBasicParsing "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/$btVersion/microsoft.windows.sdk.buildtools.$btVersion.nupkg" -OutFile $nupkg
-        Expand-Archive -LiteralPath $nupkg -DestinationPath $bt -Force
-        Remove-Item -LiteralPath $nupkg
-    }
-    $sdkBin = Get-ChildItem -LiteralPath (Join-Path $bt 'bin') -Directory | Sort-Object Name | Select-Object -Last 1 | ForEach-Object { Join-Path $_.FullName 'x64' }
+    # 2. Herramientas del Windows SDK.
+    $sdkBin = Get-SdkBin
     $makeappx = Join-Path $sdkBin 'makeappx.exe'; $makepri = Join-Path $sdkBin 'makepri.exe'; $signtool = Join-Path $sdkBin 'signtool.exe'
 
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'LICENSE') -Destination $stage

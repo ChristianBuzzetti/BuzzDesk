@@ -33,6 +33,7 @@
                 </MenuItem>
                 <MenuItem Header="{local:T 'Vista'}" Tag="&#xE890;">
                   <MenuItem Header="{local:T 'Personalizar…'}" Click="PersonalizeClick"/>
+                  <MenuItem Header="{local:T 'Opciones…'}" Click="OptionsClick"/>
                   <Separator/>
                   <MenuItem x:Name="ShowBobertoMenu" Header="Boberto" IsCheckable="True" IsChecked="True" Click="BobertoToggleClick"/>
                   <Separator/>
@@ -44,7 +45,7 @@
                   <MenuItem x:Name="StartupMenu" Header="{local:T 'Iniciar con Windows'}" IsCheckable="True" Click="StartupClick"/>
                 </MenuItem>
                 <MenuItem x:Name="MenuAi" Header="{local:T 'IA'}" Tag="&#xEA80;"><MenuItem Header="{local:T 'Configurar IA…'}" Click="AiSettingsClick"/></MenuItem>
-                <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Guía de BuzzDesk'}" InputGestureText="F1" Click="GuideClick"/><Separator/><MenuItem Header="{local:T 'Revisar componentes…'}" Click="ComponentsClick"/><MenuItem Header="{local:T 'Acerca de BuzzDesk'}" Click="AboutClick"/></MenuItem>
+                <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Guía de BuzzDesk'}" InputGestureText="F1" Click="GuideClick"/><Separator/><MenuItem Header="{local:T 'Revisar componentes…'}" Click="ComponentsClick"/><MenuItem Header="{local:T 'Abrir el registro'}" Click="LogClick"/><MenuItem Header="{local:T 'Acerca de BuzzDesk'}" Click="AboutClick"/></MenuItem>
               </Menu>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -109,6 +110,7 @@
         <DockPanel>
           <StackPanel DockPanel.Dock="Bottom">
             <Border Height="1" Background="{DynamicResource FaintBorder}" Margin="6,6,6,6"/>
+            <Button Style="{StaticResource NavAction}" Click="OptionsClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE713;"/><TextBlock Text="{local:T 'Opciones'}"/></DockPanel></Button>
             <Button Style="{StaticResource NavAction}" Click="PersonalizeClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE790;"/><TextBlock Text="{local:T 'Personalizar'}"/></DockPanel></Button>
             <Button Style="{StaticResource NavAction}" Click="GuideClick" ToolTip="{local:T 'Todo lo que puede hacer BuzzDesk, paso a paso · F1'}"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE82D;"/><TextBlock Text="{local:T 'Guía'}"/></DockPanel></Button>
             <Button x:Name="NavAiStatus" Style="{StaticResource NavAction}" Click="AiSettingsClick"><DockPanel><Ellipse x:Name="NavAiDot" DockPanel.Dock="Right" Width="8" Height="8" VerticalAlignment="Center" Fill="{DynamicResource Muted}"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xEA80;"/><TextBlock x:Name="NavAiText" Text="IA" TextTrimming="CharacterEllipsis"/></DockPanel></Button>

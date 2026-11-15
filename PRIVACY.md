@@ -14,6 +14,7 @@ BuzzDesk is a task, reminder, topic and link organizer for Windows. It works ent
 
 - Your data, in a SQLite database at `%LOCALAPPDATA%\BuzzDesk\buzzdesk.db`, and its automatic daily backups in `%LOCALAPPDATA%\BuzzDesk\backups`.
 - Settings and appearance, in the same folder.
+- A small diagnostic log (`logs`, 14 days): app version, database version, backups and errors. It holds no personal data (no titles, notes or URLs) and is never sent anywhere.
 
 **Network use**
 

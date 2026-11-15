@@ -11,7 +11,16 @@
     <Product>BuzzDesk</Product>
     <Version>0.1.0</Version>
     <Authors>Christian Buzzetti</Authors>
-    <Description>BuzzDesk: organización laboral y personal (pendientes, recordatorios, temas y enlaces), hermana de BuzzPrint.</Description>
+    <!-- File properties of BuzzDesk.exe (Details tab). Antivirus heuristics distrust unsigned binaries with empty
+         version info, so every field is filled in. -->
+    <Company>Christian Buzzetti</Company>
+    <Copyright>© 2026 Christian Buzzetti · MIT License</Copyright>
+    <AssemblyTitle>BuzzDesk</AssemblyTitle>
+    <Description>BuzzDesk - work and personal organizer for Windows (tasks, reminders, habits, bills, topics and links).</Description>
+    <FileVersion>$(Version).0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <NeutralLanguage>en-US</NeutralLanguage>
     <ApplicationIcon>Assets\buzzdesk.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Nullable>enable</Nullable>

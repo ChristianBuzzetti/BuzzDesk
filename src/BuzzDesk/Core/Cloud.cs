@@ -104,6 +104,7 @@ public static class Cloud
 
         (bool, string) Fail(string message)
         {
+            Log.Warn("cloud copy: " + message);
             st.CloudLastError = message;
             Store.SaveSettings();
             return (false, message);

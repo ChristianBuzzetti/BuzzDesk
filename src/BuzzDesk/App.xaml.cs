@@ -49,6 +49,7 @@ public partial class App : Application
 
         Store.Init();
         Store.ReadOnly = IsShot;
+        HookErrors();
         L.Lang = Arg(e.Args, "--lang") is { Length: > 0 } forced ? forced : Store.Settings.Language == "es" ? "es" : "en";
         var culture = L.Culture;
         System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
@@ -62,6 +63,8 @@ public partial class App : Application
         // Windows changed its time zone: "today" follows it when the app uses Windows' zone.
         SystemEvents.TimeChanged += (_, _) => Dispatcher.BeginInvoke(Clock.SystemZoneChanged);
 
+        Log.Prune();
+        Log.Info("start " + Log.Environment_() + (LaunchedAtStartup(e.Args) ? " · with Windows" : ""));
         if (!OpenDatabase()) { Shutdown(); return; }
         Db.Changed += _ => Cloud.Dirty = true;
         StartDayWatch();
@@ -92,6 +95,47 @@ public partial class App : Application
         hotkeys?.Dispose();
         try { mutex?.ReleaseMutex(); } catch (ApplicationException) { }
         base.OnExit(e);
+    }
+
+    // ------------------------------------------------------------------ errors
+    /// <summary>Anything unexpected is logged; on the UI thread the app keeps running (every write is one
+    /// transaction, so a failed action leaves the data as it was) and says so once per minute at most.</summary>
+    void HookErrors()
+    {
+        DispatcherUnhandledException += (_, e) =>
+        {
+            Log.Error("ui", e.Exception);
+            e.Handled = !IsShot;
+            if (IsShot) return;
+            if (DateTime.UtcNow - lastErrorShown < TimeSpan.FromMinutes(1)) return;
+            lastErrorShown = DateTime.UtcNow;
+            ShowError(e.Exception);
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => { if (e.ExceptionObject is Exception ex) Log.Error("fatal", ex); };
+        TaskScheduler.UnobservedTaskException += (_, e) => { Log.Error("background", e.Exception); e.SetObserved(); };
+    }
+
+    DateTime lastErrorShown = DateTime.MinValue;
+
+    void ShowError(Exception ex)
+    {
+        string details = ex.GetType().Name + ": " + ex.Message;
+        if (PromptWindow.Confirm(main, L.T("Algo salió mal"),
+                L.T("BuzzDesk sigue funcionando y tus datos están a salvo: la acción que falló no se guardó a medias.") + "\n\n" +
+                L.T("Detalle:") + " " + details + "\n" + L.T("Registro:") + " " + Log.Today,
+                L.T("Abrir el registro"), L.T("Cerrar")))
+            OpenLog();
+    }
+
+    public static void OpenLog()
+    {
+        try
+        {
+            Directory.CreateDirectory(Log.Dir);
+            if (File.Exists(Log.Today)) Process.Start(new ProcessStartInfo("notepad.exe", "\"" + Log.Today + "\"") { UseShellExecute = false });
+            else Process.Start("explorer.exe", "\"" + Log.Dir + "\"");
+        }
+        catch (System.ComponentModel.Win32Exception) { }
     }
 
     // ------------------------------------------------------------------ reminders
@@ -144,11 +188,13 @@ public partial class App : Application
         Db.Configure(path, backups);
         try
         {
-            Db.Initialize(c => Sections.SeedDefaults(c, L.T("Trabajo"), L.T("Personal")));
+            int version = Db.Initialize(c => Sections.SeedDefaults(c, L.T("Trabajo"), L.T("Personal")));
+            Log.Info("database " + Db.Path + " · schema v" + version);
             return true;
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or UnauthorizedAccessException or InvalidOperationException or InvalidDataException)
         {
+            Log.Error("open database", ex);
             MessageBox.Show(L.T("No se pudo abrir la base de datos de BuzzDesk.") + "\n\n" + Db.Path + "\n\n" + ex.Message, AppInfo.Name, MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
@@ -185,15 +231,17 @@ public partial class App : Application
         var now = Clock.Now;
         Task.Run(() =>
         {
-            try { Backup.DailyIfDue(Db.BackupDir, st.BackupKeepDaily, st.BackupKeepWeekly, now); }
+            try { if (Backup.DailyIfDue(Db.BackupDir, st.BackupKeepDaily, st.BackupKeepWeekly, now) is { } r) Log.Info("daily backup " + Path.GetFileName(r.Path) + " " + r.Bytes / 1024 + " KB"); }
             catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or UnauthorizedAccessException or InvalidDataException)
             {
+                Log.Error("daily backup", ex);
                 Dispatcher.BeginInvoke(() => Toast(L.T("Copia de seguridad"), L.T("No se pudo hacer la copia de seguridad diaria: ") + ex.Message));
             }
             // And once a day to the cloud folder, if one is chosen.
             if (Cloud.Enabled && !Cloud.DoneToday)
             {
                 var (ok, message) = Cloud.Upload();
+                if (ok) Log.Info("cloud copy ok"); else Log.Warn("cloud copy failed: " + message);
                 Dispatcher.BeginInvoke(() =>
                 {
                     main?.ShowCloud();
@@ -353,6 +401,7 @@ public partial class App : Application
         Item(L.T("Enlaces"), "", () => Navigate("links"));
         menu.Items.Add(new Separator());
         Item(L.T("Personalizar…"), "", () => { ShowMain(); OpenPersonalization(main!); });
+        Item(L.T("Opciones…"), "", () => { ShowMain(); OptionsUi.Show(main!); });
         menu.Items.Add(new Separator());
         Item(L.T("Salir"), "", ExitApp);
         // A context menu needs a foreground window of this process to close when clicking elsewhere.
@@ -387,7 +436,8 @@ public partial class App : Application
         if (Exiting) return;
         Exiting = true;
         // Changes since the last cloud copy: one more on the way out (a few seconds at most).
-        if (Cloud.Enabled && Cloud.Dirty && !IsShot) Cloud.Upload();
+        if (Cloud.Enabled && Cloud.Dirty && !IsShot) { var (ok, message) = Cloud.Upload(); Log.Info("cloud copy on exit: " + (ok ? "ok" : message)); }
+        Log.Info("exit");
         foreach (Window w in Windows.Cast<Window>().ToArray()) w.Close();
         Shutdown();
     }
@@ -406,6 +456,15 @@ public partial class App : Application
         // Another app may hold a key: say which, once (BuzzDesk keeps working, the menus still open everything).
         if (fails.Length > 0) Toast(L.T("Atajos de teclado"), fails.Trim());
         main?.RefreshShortcuts();
+    }
+
+    /// <summary>After the shortcuts change in Options.</summary>
+    public void ReRegisterHotkeys()
+    {
+        if (hotkeys == null) return;
+        hotkeys.Unregister(HotkeyQuickCapture);
+        hotkeys.Unregister(HotkeyLauncher);
+        RegisterHotkeys();
     }
 
     internal void OnHotkey(int id)

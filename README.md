@@ -36,7 +36,20 @@ BuzzDesk is the sibling of [BuzzPrint](https://github.com/ChristianBuzzetti/Buzz
 1. Download **`BuzzDesk-<version>-win-x64.zip`** from the [latest release](https://github.com/ChristianBuzzetti/BuzzDesk/releases/latest) (or from the *build* workflow's artifacts).
 2. Extract it anywhere, for example `C:\Apps`, and open `BuzzDesk\BuzzDesk.exe`.
 
-Nothing else to install: .NET is included. If WebView2 (for Boberto) is missing, BuzzDesk offers to install it. The app isn't code-signed, so Windows SmartScreen may show *"Windows protected your PC"*: click **More info → Run anyway**.
+Nothing else to install: .NET is included. If WebView2 (for Boberto) is missing, BuzzDesk offers to install it.
+
+### If Windows or the antivirus blocks it
+
+The app isn't code-signed yet, and a new unsigned program that starts with Windows, listens for global shortcuts and fetches site icons looks suspicious to antivirus heuristics. It's a false positive, but here is what helps:
+
+1. **Before extracting**, unblock the zip: right-click the zip → *Properties* → tick **Unblock** → OK (or `Unblock-File .\BuzzDesk-*.zip` in PowerShell). Extracting a blocked zip marks every file as "from the internet".
+2. **SmartScreen** (*"Windows protected your PC"*): **More info → Run anyway**.
+3. **Microsoft Defender** quarantined it: *Windows Security → Virus & threat protection → Protection history* → the BuzzDesk entry → **Restore** (or **Allow on device**). You can also report it as safe at <https://www.microsoft.com/wdsi/filesubmission> (choose *Software developer*/*Home customer*, "Incorrectly detected"); Microsoft usually clears it in a few days for everyone.
+4. **Another antivirus**: add an exclusion for the `BuzzDesk` folder, or report the false positive to its vendor.
+5. **Company laptop**: IT policy may only allow signed apps; ask them to allow it, or build it yourself from source (step below), which some policies treat differently.
+6. **For good**: sign it. `build.ps1 -Sign -CertThumbprint <thumbprint>` (or `-Pfx file.pfx`) signs `BuzzDesk.exe` and `BuzzDesk.dll` with a timestamp. An OV/EV code-signing certificate or Microsoft's Azure Trusted Signing builds reputation; the Microsoft Store package (`-Msix`) is signed by the Store.
+
+If something fails, *Help → Open the log* shows `%LOCALAPPDATA%\BuzzDesk\logs\buzzdesk-YYYYMMDD.log` (no personal data: no titles, no URLs).
 
 ## Build from source
 
@@ -61,6 +74,7 @@ dotnet test tests\BuzzDesk.Tests                             # data and domain t
 | Backups | `%LOCALAPPDATA%\BuzzDesk\backups` |
 | Cloud copies (optional) | `<your cloud folder>\BuzzDesk Backups\BuzzDesk-YYYYMMDD-HHmmss.bzdk` |
 | Settings, appearance, Boberto | `%LOCALAPPDATA%\BuzzDesk\*.json` |
+| Log (14 days) | `%LOCALAPPDATA%\BuzzDesk\logs` |
 
 For the DBA in the room:
 

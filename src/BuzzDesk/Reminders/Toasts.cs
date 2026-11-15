@@ -27,7 +27,7 @@ public static class Toasts
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => onAction(action, id));
             };
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException) { Available = false; }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException) { Available = false; Log.Error("toasts init (falling back to tray balloons)", ex); }
     }
 
     public static bool Show(Reminder r)
@@ -52,6 +52,7 @@ public static class Toasts
         catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException or ArgumentException)
         {
             Available = false;
+            Log.Error("toast (falling back to tray balloons)", ex);
             return false;
         }
     }

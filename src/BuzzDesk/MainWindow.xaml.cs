@@ -574,6 +574,8 @@ public partial class MainWindow : Window
         CloudStatus.ToolTip = Store.Settings.CloudLastError.Length > 0 ? Store.Settings.CloudLastError : Store.Settings.CloudFolder;
     }
 
+    void LogClick(object sender, RoutedEventArgs e) => App.OpenLog();
+    void OptionsClick(object sender, RoutedEventArgs e) => OptionsUi.Show(this);
     void ComponentsClick(object sender, RoutedEventArgs e) => _ = App.Current.CheckComponentsAsync();
     void AboutClick(object sender, RoutedEventArgs e) => AboutWindow.Show(this);
     void LangEnClick(object sender, RoutedEventArgs e) => SetLanguage("en");
