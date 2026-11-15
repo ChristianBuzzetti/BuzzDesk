@@ -21,6 +21,7 @@ namespace BuzzDesk
         public string BackupFolder = "";                  // empty = LocalAppData\BuzzDesk\backups
         public string LastNav = "today";                  // today | tasks | topics | links
         public string QuickMode = "task";                 // quick capture: task | note | reminder | link
+        public string DefaultCurrency = "";               // ISO 4217 for new bills; empty = Windows' region currency
         public long QuickListId = 0;                      // quick capture: last list used
         public long QuickSectionId = 0;                   // quick capture: last area or project for tasks (0 = none)
         public bool FetchFavicons = true;                 // ask each saved link's own site for its title and icon

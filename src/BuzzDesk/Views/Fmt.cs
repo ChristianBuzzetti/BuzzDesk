@@ -60,6 +60,38 @@ public static class Fmt
         return string.Join(", ", names);
     }
 
+    /// <summary>The currency for new bills: the chosen one, else Windows' region's (ARS in Argentina).</summary>
+    public static string DefaultCurrency
+    {
+        get
+        {
+            if (Store.Settings.DefaultCurrency is { Length: 3 } c) return c;
+            try { return new System.Globalization.RegionInfo(System.Globalization.CultureInfo.CurrentCulture.Name).ISOCurrencySymbol; }
+            catch (ArgumentException) { return "USD"; }
+        }
+    }
+
+    public static readonly string[] Currencies = ["ARS", "USD", "EUR", "BRL", "UYU", "CLP", "PYG", "BOB", "MXN", "COP", "PEN", "GBP", "CAD", "AUD", "JPY", "CHF"];
+
+    /// <summary>"ARS 25.000,00" in the app's number format.</summary>
+    public static string Money(long cents, string currency) => currency + " " + (cents / 100m).ToString(cents % 100 == 0 ? "N0" : "N2", L.Culture);
+
+    /// <summary>Reads "25000", "25.000,50" or "25,000.50" (the app's format first). Empty = no amount.</summary>
+    public static bool TryMoney(string text, out long? cents)
+    {
+        cents = null;
+        string t = (text ?? "").Trim().TrimStart('$').Trim();
+        if (t.Length == 0) return true;
+        if (decimal.TryParse(t, System.Globalization.NumberStyles.Number, L.Culture, out var v) ||
+            decimal.TryParse(t, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out v))
+        {
+            if (v < 0 || v > 1_000_000_000_000m) return false;
+            cents = (long)Math.Round(v * 100m, MidpointRounding.AwayFromZero);
+            return true;
+        }
+        return false;
+    }
+
     public static string Cap(string s) => s.Length == 0 ? s : char.ToUpper(s[0], L.Culture) + s[1..];
 
     /// <summary>"hace 3 días" / "3 days ago" for an instant.</summary>

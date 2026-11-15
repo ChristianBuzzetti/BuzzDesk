@@ -20,6 +20,28 @@ public sealed class ReminderScheduler
     }
 
     public void Start() { timer.Start(); Check(); }
+
+    DateTime lastNotices = DateTime.MinValue;
+
+    /// <summary>Bills coming due and important dates coming up: one toast each, at most every 10 minutes' check.</summary>
+    void CheckNotices()
+    {
+        if (DateTime.UtcNow - lastNotices < TimeSpan.FromMinutes(10)) return;
+        lastNotices = DateTime.UtcNow;
+        List<Notices.Notice> due;
+        try { due = Notices.Due(Clock.Today); }
+        catch (Microsoft.Data.Sqlite.SqliteException) { return; }
+        if (due.Count == 0) return;
+        Notices.MarkFired(due);
+        foreach (var n in due)
+        {
+            string when = n.DaysLeft < 0 ? L.T("vencido") : n.DaysLeft == 0 ? L.T("hoy") : n.DaysLeft == 1 ? L.T("mañana") : L.F("en {0} días", n.DaysLeft);
+            string title = n.Kind == "bill" ? L.F("Vence {0}: {1}", when, n.Title) : L.F("{0}: {1}", Fmt.Cap(when), n.Title);
+            string text = Fmt.Cap(n.ForDate.ToString("dddd d MMMM", L.Culture));
+            string view = n.Kind == "bill" ? "bills" : "dates";
+            if (!Toasts.ShowNotice(title, text, view)) App.Current.Toast(title, text, () => App.Current.Navigate(view));
+        }
+    }
     public void Stop() => timer.Stop();
 
     public void Check()
@@ -29,6 +51,7 @@ public sealed class ReminderScheduler
         catch (Microsoft.Data.Sqlite.SqliteException) { return; }   // busy for a moment: next tick
         bool wasStartup = startup;
         startup = false;
+        CheckNotices();
         if (due.Count == 0) return;
         Reminders.MarkFired(due.Select(r => r.Id), DateTime.UtcNow);
         // Missed while closed: more than 3 that are over 10 minutes late become one toast.
@@ -48,6 +71,7 @@ public sealed class ReminderScheduler
     public static void Handle(string action, long id)
     {
         if (action == "today") { App.Current.Navigate("today"); return; }
+        if (action.StartsWith("view:", StringComparison.Ordinal)) { App.Current.Navigate(action[5..]); return; }
         var r = Reminders.Get(id);
         if (r == null) return;
         switch (action)

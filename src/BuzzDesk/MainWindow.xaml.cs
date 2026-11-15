@@ -43,6 +43,7 @@ public partial class MainWindow : Window
         Db.Changed += what => ScheduleRefresh(what == "section");
         TodayView.Blocks.Add(HabitsView.TodayBlock);
         TodayView.Blocks.Add(ReminderUi.TodayBlock);
+        TodayView.Blocks.Add(BillsView.TodayBlock);
         TodayView.Blocks.Add(TopicsView.TodayBlock);
         TodayView.Blocks.Add(InboxUi.TodayBlock);
         TodayView.Blocks.Add(LinkUi.TodayBlock);
@@ -86,6 +87,10 @@ public partial class MainWindow : Window
         var lists = Checklists.List();
         int pendingItems = lists.Sum(l => l.Items - l.Done);
         NavListsCount.Text = lists.Count == 0 ? "" : pendingItems > 0 ? pendingItems.ToString() : lists.Count.ToString();
+        var today0 = Clock.Today;
+        var dueBills = Bills.List().Count(b => b.NextDue != null && (b.Overdue(today0) || b.DueSoon(today0)));
+        NavBillsCount.Text = dueBills > 0 ? dueBills.ToString() : "";
+        NavBillsCount.SetResourceReference(TextBlock.ForegroundProperty, dueBills > 0 ? "Accent" : "LineNumber");
         int links = Links.Count();
         NavLinksCount.Text = links > 0 ? links.ToString() : "";
         var (review, _, openTopics) = Topics.Counts(Clock.Today);
@@ -198,6 +203,7 @@ public partial class MainWindow : Window
         "search" => new SearchView(),
         "habits" => new HabitsView(),
         "lists" => new ListsView(),
+        "bills" => new BillsView(),
         _ => new TodayView(),
     };
 

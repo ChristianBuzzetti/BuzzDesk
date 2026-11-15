@@ -22,6 +22,7 @@ public static class Toasts
                 var args = ToastArguments.Parse(e.Argument);
                 string action = args.TryGetValue("action", out string? a) ? a : "open";
                 long id = args.TryGetValue("id", out string? s) && long.TryParse(s, out long x) ? x : 0;
+                if (action == "view" && args.TryGetValue("view", out string? v)) action = "view:" + v;
                 // Toasts call back on a background thread.
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => onAction(action, id));
             };
@@ -67,6 +68,23 @@ public static class Toasts
                 .AddText(string.Join(" · ", missed.Take(3).Select(r => r.Title)) + (missed.Count > 3 ? " …" : ""))
                 .AddButton(new ToastButton().SetContent(L.T("Ver en Hoy")).AddArgument("action", "today").AddArgument("id", 0))
                 .Show(t => { t.Tag = "missed"; t.Group = "reminders"; });
+            return true;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException or ArgumentException)
+        {
+            Available = false;
+            return false;
+        }
+    }
+
+    /// <summary>A one-off notice (a bill coming due, a birthday coming); clicking opens <paramref name="view"/>.</summary>
+    public static bool ShowNotice(string title, string text, string view)
+    {
+        if (!Available) return false;
+        try
+        {
+            new ToastContentBuilder().AddArgument("action", "view").AddArgument("id", 0).AddArgument("view", view)
+                .AddText(title).AddText(text).Show(t => { t.Group = "notices"; });
             return true;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException or ArgumentException)
