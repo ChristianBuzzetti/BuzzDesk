@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- 19041 projection: native Windows toasts (reminders with snooze buttons). -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>BuzzDesk</AssemblyName>
+    <RootNamespace>BuzzDesk</RootNamespace>
+    <Product>BuzzDesk</Product>
+    <Version>0.1.0</Version>
+    <Authors>Christian Buzzetti</Authors>
+    <Description>BuzzDesk: organización laboral y personal (pendientes, recordatorios, temas y enlaces), hermana de BuzzPrint.</Description>
+    <ApplicationIcon>Assets\buzzdesk.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <NoWarn>$(NoWarn);CA1416;WFO1000</NoWarn>
+  </PropertyGroup>
+  <!-- Microsoft Store build (build.ps1 -Msix): StartupTask instead of the Run key. -->
+  <PropertyGroup Condition="'$(Store)' == 'true'">
+    <DefineConstants>$(DefineConstants);STORE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- WPF owns the UI; Windows Forms is used only for the tray icon and the hotkey window. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
+    <!-- Optional AI, off by default: Claude through Anthropic's official SDK, other providers through their
+         OpenAI-compatible endpoint, API keys encrypted with Windows DPAPI. -->
+    <PackageReference Include="Anthropic" Version="13.8.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Assets/*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Resource Include="Assets/Fonts/*.ttf" />
+    <Resource Include="Assets/boberto.png" />
+    <Resource Include="Assets/buzzdesk.ico" />
+    <Resource Include="Assets/buzzdesk.png" />
+    <Content Include="Assets/Fonts/*.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets/Boberto/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets/Fonts/Inter-Regular.ttf" TargetPath="Assets/Boberto/fonts/Inter-Regular.ttf" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

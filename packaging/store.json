@@ -1,0 +1,6 @@
+{
+  "_comment": "Package identity for the MSIX, from Partner Center → BuzzDesk → Product management → Product identity. Placeholder values until the name is reserved in Partner Center.",
+  "IdentityName": "ChristianBuzzetti.BuzzDesk",
+  "Publisher": "CN=C05D5263-64BD-4C16-8076-636025C1D4E3",
+  "PublisherDisplayName": "ChristianBuzzetti"
+}
