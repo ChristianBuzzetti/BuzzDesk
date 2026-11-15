@@ -373,3 +373,94 @@ public class LinkTests : IDisposable
         Assert.Throws<SqliteException>(() => Links.SetFavicon(id, new byte[300_000]));
     }
 }
+
+[Collection("db")]
+public class SearchTests : IDisposable
+{
+    readonly TempDb db = new();
+    static readonly DateOnly Today = new(2026, 11, 15);
+    public void Dispose() => db.Dispose();
+
+    [Theory]
+    [InlineData("migra prod", "\"migra\"* AND \"prod\"*")]
+    [InlineData("\"plan de backup\" sql", "\"plan de backup\" AND \"sql\"*")]
+    [InlineData("a OR b NOT c*", "\"a\"* AND \"OR\"* AND \"b\"* AND \"NOT\"* AND \"c\"*")]
+    [InlineData("x\"y", "\"x\"* AND \"y\"*")]
+    [InlineData("  ;; ", null)]
+    public void Query_building(string text, string? expected) => Assert.Equal(expected, Search.BuildQuery(text));
+
+    [Fact]
+    public void Finds_everything_without_accents_and_follows_changes()
+    {
+        long task = Tasks.Add(new Tasks.Draft("Revisión de índices", Notes: "fragmentación en PROD", Tags: ["dba"]), Today);
+        long sub = Tasks.Add(new Tasks.Draft("Rebuild online", ParentId: task), Today);
+        long topic = Topics.Add("Migración a SQL 2025", tags: ["proyecto"]);
+        Topics.SetStatus(topic, TopicState.Waiting, "Mariela", "Esperando a Mariela");
+        long note = Topics.AddNote(topic, "Infra confirmó el ambiente de QA");
+        var (link, _) = Links.Add("https://wiki.local/indices", "Guía de índices", tags: ["docs"]);
+
+        Assert.Contains(Search.Run("revision"), h => h.Kind == "task" && h.RefId == task);          // no accent needed
+        Assert.Contains(Search.Run("fragmenta"), h => h.Kind == "task" && h.RefId == task);         // prefix in notes
+        Assert.Contains(Search.Run("rebuild"), h => h.Kind == "task" && h.RefId == task && h.Title.Contains("›"));   // subtask → parent
+        Assert.Contains(Search.Run("mariela"), h => h.Kind == "topic" && h.RefId == topic);         // waiting on
+        Assert.Contains(Search.Run("ambiente qa"), h => h.Kind == "note" && h.RefId == note && h.Title.StartsWith("Migración"));
+        Assert.Contains(Search.Run("docs"), h => h.Kind == "link" && h.RefId == link);              // by tag
+        Assert.Contains(Search.Run("\"de índices\""), h => h.Kind == "link");
+        var first = Search.Run("indices");
+        Assert.Contains(Search.MarkStart, first[0].Snippet);
+
+        // edits, tags, deletes
+        Tasks.Update(Tasks.Get(task)! with { Title = "Estadísticas" }, ["perf"]);
+        Assert.DoesNotContain(Search.Run("revision"), h => h.RefId == task && h.Kind == "task");
+        Assert.Contains(Search.Run("perf"), h => h.RefId == task);
+        Assert.DoesNotContain(Search.Run("dba"), h => h.RefId == task);
+        Tasks.Delete(task);
+        Assert.DoesNotContain(Search.Run("estadisticas"), h => h.Kind == "task");
+        Tasks.Restore(task);
+        Assert.Contains(Search.Run("estadisticas"), h => h.Kind == "task");
+        Topics.DeleteNote(note);
+        Assert.Empty(Search.Run("ambiente"));
+
+        using var c = Db.Open();
+        Assert.Equal("ok", Db.Scalar<string>(c, "PRAGMA integrity_check;"));
+        Db.Exec(c, "INSERT INTO search_fts(search_fts) VALUES ('integrity-check');");
+    }
+
+    [Fact]
+    public void Status_notes_are_not_indexed()
+    {
+        long topic = Topics.Add("Compras");
+        Topics.SetStatus(topic, TopicState.Paused, null, "Pausado por presupuesto");
+        Assert.Empty(Search.Run("presupuesto"));
+    }
+}
+
+[Collection("db")]
+public class UpgradeTests : IDisposable
+{
+    readonly string dir = Path.Combine(Path.GetTempPath(), "buzzdesk-upgrade-" + Guid.NewGuid().ToString("N"));
+    public void Dispose() { SqliteConnection.ClearAllPools(); try { Directory.Delete(dir, true); } catch (IOException) { } }
+
+    [Fact]
+    public void Version_1_database_upgrades_with_backup_and_backfill()
+    {
+        Directory.CreateDirectory(dir);
+        string path = Path.Combine(dir, "buzzdesk.db"), backups = Path.Combine(dir, "backups");
+        // A database left by a build that only knew migration 1, with data in it.
+        using (var c = new SqliteConnection("Data Source=" + path + ";Pooling=False"))
+        {
+            c.Open();
+            Db.Exec(c, $"PRAGMA application_id = {Db.ApplicationId}; PRAGMA journal_mode = WAL;");
+            var m1 = Migrator.All[0];
+            Db.Exec(c, "CREATE TABLE schema_version (version INTEGER PRIMARY KEY, description TEXT NOT NULL, checksum TEXT NOT NULL CHECK (length(checksum) = 64), applied_utc TEXT NOT NULL) STRICT;");
+            Db.Exec(c, m1.Sql);
+            Db.Exec(c, "INSERT INTO schema_version VALUES (1, $d, $c, '2026-11-01T00:00:00Z')", ("$d", m1.Description), ("$c", m1.Checksum));
+            Db.Exec(c, "INSERT INTO task(title, created_utc, updated_utc) VALUES ('Tarea vieja de auditoría', '2026-11-01T00:00:00Z', '2026-11-01T00:00:00Z')");
+        }
+        Db.Configure(path, backups);
+        int version = Db.Initialize();
+        Assert.Equal(Migrator.All.Count, version);
+        Assert.Single(Directory.GetFiles(backups, "*-pre-migration.db"));
+        Assert.Contains(Search.Run("auditoria"), h => h.Kind == "task");
+    }
+}

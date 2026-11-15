@@ -367,8 +367,8 @@ public partial class App : Application
 
     public void Navigate(string view) { ShowMain(); main?.Navigate(view); }
 
-    /// <summary>Quick capture (Ctrl+Alt+Space): until the capture window exists, opens BuzzDesk.</summary>
-    public void QuickCapture() => ShowMain();
+    /// <summary>Quick capture (Ctrl+Alt+Space): a small card next to the cursor.</summary>
+    public void QuickCapture() => QuickCaptureWindow.Toggle();
 
     public void ExitApp()
     {

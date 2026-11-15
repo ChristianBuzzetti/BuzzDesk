@@ -20,6 +20,8 @@ namespace BuzzDesk
         public int BackupKeepWeekly = 8;                  // plus one per week (Mondays) for this many weeks
         public string BackupFolder = "";                  // empty = LocalAppData\BuzzDesk\backups
         public string LastNav = "today";                  // today | tasks | topics | links
+        public string QuickMode = "task";                 // quick capture: task | note | reminder | link
+        public long QuickSectionId = 0;                   // quick capture: last area or project for tasks (0 = none)
         public bool FetchFavicons = true;                 // ask each saved link's own site for its title and icon
         public string HotkeyLauncher = "Ctrl+Alt+L";      // quick link launcher, anywhere in Windows
         public string MarkShape = "hex";                  // BuzzDesk logo (Personalize → Effects → Logo)

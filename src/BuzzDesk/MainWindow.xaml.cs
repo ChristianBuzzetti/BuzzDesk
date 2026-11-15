@@ -43,6 +43,7 @@ public partial class MainWindow : Window
         Db.Changed += what => ScheduleRefresh(what == "section");
         TodayView.Blocks.Add(ReminderUi.TodayBlock);
         TodayView.Blocks.Add(TopicsView.TodayBlock);
+        TodayView.Blocks.Add(InboxUi.TodayBlock);
         TodayView.Blocks.Add(LinkUi.TodayBlock);
         App.Current.DayChanged += () => ScheduleRefresh(false);
 
@@ -188,6 +189,7 @@ public partial class MainWindow : Window
         "tasks" => new TasksView(),
         "topics" => new TopicsView(),
         "links" => new LinksView(),
+        "search" => new SearchView(),
         _ => new TodayView(),
     };
 
@@ -406,8 +408,42 @@ public partial class MainWindow : Window
     void AiSettingsClick(object sender, RoutedEventArgs e) { AiSettingsWindow.ShowFor(this); SyncAiChip(); }
 
     // ================================================================== search
-    void SearchChanged(object sender, TextChangedEventArgs e) { }
+    System.Windows.Threading.DispatcherTimer? searchDelay;
+    string beforeSearch = "today";
+
+    /// <summary>Typing searches everything (FTS5) after a short pause; clearing the box goes back.</summary>
+    void SearchChanged(object sender, TextChangedEventArgs e)
+    {
+        searchDelay ??= new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(160) };
+        searchDelay.Stop();
+        searchDelay.Tick -= RunSearch; searchDelay.Tick += RunSearch;
+        searchDelay.Start();
+    }
+
+    void RunSearch(object? sender, EventArgs e)
+    {
+        searchDelay!.Stop();
+        string text = Search.Text.Trim();
+        if (text.Length == 0)
+        {
+            NavSearch.Visibility = Visibility.Collapsed;
+            if (current is SearchView) Navigate(beforeSearch);
+            return;
+        }
+        if (current is not SearchView) beforeSearch = current?.Id ?? "today";
+        NavSearch.Visibility = Visibility.Visible;
+        if (current is not SearchView) Navigate("search");
+        ((SearchView)views["search"]).SetQuery(text);
+    }
+
     void FocusSearchClick(object sender, RoutedEventArgs e) { Search.Focus(); Search.SelectAll(); }
+
+    /// <summary>Selects a link in Links (from search).</summary>
+    public void OpenLink(long id)
+    {
+        Navigate("links");
+        ((LinksView)views["links"]).Select(id);
+    }
 
     // ================================================================== guide, keys
     void GuideClick(object sender, RoutedEventArgs e) => GuideWindow.Open(this);
@@ -443,7 +479,12 @@ public partial class MainWindow : Window
         bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
         if (e.Key == Key.F1) { GuideWindow.Open(this); e.Handled = true; return; }
         if (ctrl && e.Key == Key.F) { FocusSearchClick(this, e); e.Handled = true; return; }
-        if (Search.IsKeyboardFocusWithin && e.Key == Key.Escape) { Search.Text = ""; e.Handled = true; return; }
+        if (Search.IsKeyboardFocusWithin)
+        {
+            if (e.Key == Key.Escape) { Search.Text = ""; e.Handled = true; return; }
+            if (e.Key == Key.Enter && views.TryGetValue("search", out var sv)) { searchDelay?.Stop(); RunSearch(null, EventArgs.Empty); ((SearchView)sv).OpenFirst(); e.Handled = true; return; }
+            if (e.Key == Key.Down && current is SearchView s1) { s1.FocusList(); e.Handled = true; return; }
+        }
         if (ctrl && e.Key is Key.D1 or Key.NumPad1) { Navigate("today"); e.Handled = true; }
         else if (ctrl && e.Key is Key.D2 or Key.NumPad2) { Navigate("tasks"); e.Handled = true; }
         else if (ctrl && e.Key is Key.D3 or Key.NumPad3) { Navigate("topics"); e.Handled = true; }

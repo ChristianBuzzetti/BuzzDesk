@@ -38,7 +38,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1 -Zip     # also artifacts\B
 | 3. Reminders, tray | done |
 | 4. Topics | done |
 | 5. Links | done |
-| 6. Quick capture, search | |
+| 6. Quick capture, search | done |
 | 7. Guide, README with screenshots, `build -Zip` | |
 
 ## Code shared with BuzzPrint
