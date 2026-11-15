@@ -155,6 +155,13 @@ public sealed class TaskEditor : Border
         body.Children.Add(footer);
 
         Child = new Grid { Children = { Ui.Scroll(body), empty } };
+        // Reminders of the open task.
+        var reminders = ReminderUi.EditorBlock(
+            () => task == null ? [] : Reminders.ForTask(task.Id),
+            utc => Reminders.Add(utc, taskId: task!.Id),
+            () => (task?.DueDate, task?.DueTime));
+        Extras.Children.Add(reminders);
+        TaskLoaded += _ => ((Action)reminders.Tag)();
         Show(null);
     }
 
@@ -226,11 +233,11 @@ public sealed class TaskEditor : Border
             LoadSubtasks();
         }
         finally { loading = false; }
-        Loaded?.Invoke(t);
+        TaskLoaded?.Invoke(t);
     }
 
     /// <summary>After the fields are filled (stages plug their extras here).</summary>
-    public new event Action<TaskItem>? Loaded;
+    public event Action<TaskItem>? TaskLoaded;
 
     static StackPanel CompleteContent(bool open)
     {

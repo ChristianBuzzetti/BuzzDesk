@@ -72,6 +72,12 @@ public partial class App : Application
         SetupTray();
         hotkeys = new HotkeyWindow();
         RegisterHotkeys();
+        Toasts.Init(ReminderScheduler.Handle);
+        Scheduler = new ReminderScheduler();
+        Scheduler.Rang += UpdateTrayTip;
+        Db.Changed += what => { if (what is "reminder" or "task") Dispatcher.BeginInvoke(UpdateTrayTip); };
+        Scheduler.Start();
+        UpdateTrayTip();
         if (!LaunchedAtStartup(e.Args)) main.Show();
         // WebView2 (Boberto, Studio) ships with Windows 11; on a PC without it, offer Microsoft's installer once.
         if (!Dependencies.WebView2Installed() && !Store.Settings.WebView2Declined)
@@ -84,6 +90,45 @@ public partial class App : Application
         hotkeys?.Dispose();
         try { mutex?.ReleaseMutex(); } catch (ApplicationException) { }
         base.OnExit(e);
+    }
+
+    // ------------------------------------------------------------------ reminders
+    public ReminderScheduler? Scheduler { get; private set; }
+
+    /// <summary>Opens what a reminder points at: its task, its topic, or Today for a loose one.</summary>
+    public void OpenReminder(long id)
+    {
+        var r = Reminders.Get(id);
+        ShowMain();
+        if (r?.TaskId is long task) main?.OpenTask(task);
+        else if (r?.TopicId is long topic) main?.OpenTopic(topic);
+        else Navigate("today");
+    }
+
+    /// <summary>Tray tooltip: "BuzzDesk · next: 15:30 Call support" (max 127 characters, a Windows limit).</summary>
+    void UpdateTrayTip()
+    {
+        if (tray == null) return;
+        string tip = AppInfo.Name;
+        try
+        {
+            if (Reminders.Next(DateTime.UtcNow) is { } next)
+                tip += " · " + L.T("próximo") + ": " + Fmt.When(next.DueUtc) + " " + next.Title;
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException) { }
+        tray.Text = tip.Length > 127 ? tip[..126] + "…" : tip;
+    }
+
+    /// <summary>Reminders only ring while BuzzDesk runs: the first time one is set, offer to start with Windows.</summary>
+    public void OfferStartup(System.Windows.Window? owner)
+    {
+        if (Store.Settings.StartupOffered || StartupEnabled || IsShot) return;
+        Store.Settings.StartupOffered = true; Store.SaveSettings();
+        if (PromptWindow.Confirm(owner, L.T("Iniciar con Windows"),
+                L.T("Los recordatorios suenan mientras BuzzDesk está abierto (en la bandeja alcanza). ¿Querés que arranque solo al iniciar Windows?"),
+                L.T("Iniciar con Windows"), L.T("Ahora no")))
+            StartupEnabled = true;
+        main?.SyncStartupMenu();
     }
 
     // ------------------------------------------------------------------ database
@@ -279,6 +324,16 @@ public partial class App : Application
         }
         Item(L.T("Captura rápida"), Store.Settings.HotkeyCapture, QuickCapture);
         menu.Items.Add(new Separator());
+        try
+        {
+            if (Reminders.Next(DateTime.UtcNow) is { } next)
+            {
+                long id = next.Id;
+                Item(L.T("Próximo recordatorio") + ": " + next.Title, Fmt.When(next.DueUtc), () => OpenReminder(id));
+                menu.Items.Add(new Separator());
+            }
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException) { }
         Item(L.T("Hoy"), "", () => Navigate("today"));
         Item(L.T("Pendientes"), "", () => Navigate("tasks"));
         Item(L.T("Temas"), "", () => Navigate("topics"));

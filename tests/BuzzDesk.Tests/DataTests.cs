@@ -171,3 +171,86 @@ public class DataTests : IDisposable
         Assert.Equal(Db.ApplicationId, Db.Scalar<long>(b, "PRAGMA application_id;"));
     }
 }
+
+[Collection("db")]
+public class ReminderTests : IDisposable
+{
+    readonly TempDb db = new();
+    static readonly DateOnly Today = new(2026, 11, 15);
+    static readonly DateTime Noon = new(2026, 11, 15, 12, 0, 0, DateTimeKind.Utc);
+    public void Dispose() => db.Dispose();
+
+    [Fact]
+    public void Ring_snooze_dismiss()
+    {
+        long task = Tasks.Add(new Tasks.Draft("Llamar a soporte", DueDate: Today), Today);
+        long r1 = Reminders.Add(Noon.AddMinutes(-5), taskId: task);
+        long r2 = Reminders.Add(Noon.AddMinutes(30), title: "Reunión");
+        Assert.Equal([r1], Reminders.DueNow(Noon).Select(r => r.Id));
+        Assert.Equal("Llamar a soporte", Reminders.DueNow(Noon)[0].Title);
+        Assert.Equal(r2, Reminders.Next(Noon)!.Id);
+
+        Reminders.MarkFired([r1], Noon);
+        Assert.Empty(Reminders.DueNow(Noon));
+        Reminders.Snooze(r1, Noon.AddMinutes(10));
+        Assert.Empty(Reminders.DueNow(Noon.AddMinutes(9)));
+        Assert.Single(Reminders.DueNow(Noon.AddMinutes(10)));
+        Reminders.Dismiss(r1);
+        Assert.DoesNotContain(Reminders.DueNow(Noon.AddHours(1)), r => r.Id == r1);
+        Assert.Equal([r2], Reminders.Between(Noon.AddHours(-12), Noon.AddHours(12)).Select(r => r.Id));   // r1 dismissed
+    }
+
+    [Fact]
+    public void Completed_or_deleted_task_does_not_ring()
+    {
+        long a = Tasks.Add(new Tasks.Draft("A"), Today);
+        long b = Tasks.Add(new Tasks.Draft("B"), Today);
+        Reminders.Add(Noon.AddMinutes(-1), taskId: a);
+        Reminders.Add(Noon.AddMinutes(-1), taskId: b);
+        Tasks.Complete(a, Today);
+        Tasks.Delete(b);
+        Assert.Empty(Reminders.DueNow(Noon));
+    }
+
+    [Fact]
+    public void Loose_reminder_needs_a_title()
+    {
+        Assert.Throws<SqliteException>(() => Reminders.Add(Noon, title: "  "));
+    }
+}
+
+[Collection("db")]
+public class SchemaLintTests : IDisposable
+{
+    readonly TempDb db = new();
+    public void Dispose() => db.Dispose();
+
+    /// <summary>Every foreign key column has an index whose first column is that column.</summary>
+    [Fact]
+    public void Foreign_keys_are_indexed()
+    {
+        using var c = Db.Open();
+        var tables = Db.Query(c, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE 'CREATE VIRTUAL%'", r => r.GetString(0));
+        var missing = new List<string>();
+        foreach (var t in tables)
+        {
+            var fks = Db.Query(c, $"SELECT \"from\" FROM pragma_foreign_key_list('{t}')", r => r.GetString(0));
+            var firstCols = Db.Query(c, $"SELECT il.name FROM pragma_index_list('{t}') il", r => r.GetString(0))
+                .Select(ix => Db.Query(c, $"SELECT name FROM pragma_index_info('{ix}') WHERE seqno = 0", r => r.IsDBNull(0) ? "" : r.GetString(0)).FirstOrDefault() ?? "")
+                .ToHashSet();
+            // WITHOUT ROWID tables: the primary key's first column counts as indexed.
+            var pkFirst = Db.Query(c, $"SELECT name FROM pragma_table_info('{t}') WHERE pk = 1", r => r.GetString(0));
+            foreach (var fk in fks)
+                if (!firstCols.Contains(fk) && !pkFirst.Contains(fk)) missing.Add(t + "." + fk);
+        }
+        Assert.Empty(missing);
+    }
+
+    [Fact]
+    public void All_tables_are_strict()
+    {
+        using var c = Db.Open();
+        var loose = Db.Query(c, "SELECT name FROM pragma_table_list WHERE schema = 'main' AND type = 'table' AND strict = 0 AND name NOT LIKE 'sqlite_%'", r => r.GetString(0));
+        Assert.Empty(loose);
+    }
+}

@@ -41,6 +41,7 @@ public partial class MainWindow : Window
         Clock.Changed += () => { ShowZone(); current?.Refresh(); };
 
         Db.Changed += what => ScheduleRefresh(what == "section");
+        TodayView.Blocks.Add(ReminderUi.TodayBlock);
         App.Current.DayChanged += () => ScheduleRefresh(false);
 
         OnAppearance(appearance);
@@ -462,7 +463,11 @@ public partial class MainWindow : Window
         try { Process.Start("explorer.exe", "\"" + DataFolder.Root + "\""); }
         catch (System.ComponentModel.Win32Exception) { }
     }
-    void StartupClick(object sender, RoutedEventArgs e) { App.StartupEnabled = StartupMenu.IsChecked; StartupMenu.IsChecked = App.StartupEnabled; }
+    void StartupClick(object sender, RoutedEventArgs e) { App.StartupEnabled = StartupMenu.IsChecked; SyncStartupMenu(); }
+    public void SyncStartupMenu() => StartupMenu.IsChecked = App.StartupEnabled;
+
+    /// <summary>Opens a topic (until Topics exists, the Topics page).</summary>
+    public void OpenTopic(long id) => Navigate("topics");
     void ComponentsClick(object sender, RoutedEventArgs e) => _ = App.Current.CheckComponentsAsync();
     void AboutClick(object sender, RoutedEventArgs e) => AboutWindow.Show(this);
     void LangEnClick(object sender, RoutedEventArgs e) => SetLanguage("en");

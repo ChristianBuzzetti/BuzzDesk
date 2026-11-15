@@ -15,6 +15,7 @@ namespace BuzzDesk
         public bool GuideOffered = false;                 // the guide is offered once, on the first start
         public bool WebView2Declined = false;             // asked once at startup; Help > Check components asks again
         public bool TrayHintShown = false;                // "BuzzDesk keeps running in the tray" shown once
+        public bool StartupOffered = false;               // asked once, with the first reminder, to start with Windows
         public int BackupKeepDaily = 14;                  // daily copies kept in backups\
         public int BackupKeepWeekly = 8;                  // plus one per week (Mondays) for this many weeks
         public string BackupFolder = "";                  // empty = LocalAppData\BuzzDesk\backups

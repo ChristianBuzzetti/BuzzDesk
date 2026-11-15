@@ -127,7 +127,7 @@ CREATE TABLE reminder (
   dismissed_utc     TEXT CHECK (dismissed_utc IS NULL OR dismissed_utc GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z'),
   created_utc       TEXT NOT NULL CHECK (created_utc GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z'),
   CHECK ((task_id IS NOT NULL) + (topic_id IS NOT NULL) <= 1),
-  CHECK (task_id IS NOT NULL OR topic_id IS NOT NULL OR length(trim(title)) > 0)
+  CHECK (task_id IS NOT NULL OR topic_id IS NOT NULL OR coalesce(length(trim(title)), 0) > 0)   -- NULL-safe: a NULL CHECK passes
 ) STRICT;
 -- The scheduler asks "what is due by now?": pending reminders by their effective time.
 CREATE INDEX ix_reminder_pending ON reminder(coalesce(snoozed_until_utc, remind_at_utc)) WHERE dismissed_utc IS NULL;
