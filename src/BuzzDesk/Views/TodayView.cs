@@ -52,6 +52,7 @@ public sealed class TodayView : DeskView
     public override void BuildToolbar(Panel bar)
     {
         bar.Children.Add(Ui.ToolButton("", L.T("Nuevo pendiente"), (_, _) => New(), "Ctrl+N"));
+        bar.Children.Add(Ui.ToolButton("", L.T("Planificar mi día"), (_, _) => DayPlanUi.Pick(Window.GetWindow(this)), L.T("Elegí las 3 cosas más importantes de hoy")));
         bar.Children.Add(Ui.ToolButton("", L.T("Ver todos los pendientes"), (_, _) => Host.Navigate("tasks")));
     }
 
@@ -83,6 +84,9 @@ public sealed class TodayView : DeskView
         if (todays.Count > 0) parts.Add(L.Count(todays.Count, "pendiente para hoy", "pendientes para hoy"));
         if (overdue.Count > 0) parts.Add(L.Count(overdue.Count, "atrasado", "atrasados"));
         summary.Text = parts.Count > 0 ? string.Join(" · ", parts) : L.T("Nada pendiente para hoy.");
+        // From the evening on, how the day went.
+        if (now.Hour >= 18) summary.Text += "\n" + L.T("Hoy:") + " " + DayPlanUi.Summary(today);
+        if (DayPlanUi.TodayBlock(today) is FrameworkElement plan) body.Children.Add(plan);
         // Boberto celebrates when the last task of the day is done.
         if (lastOpenToday > 0 && due.Count == 0) stage?.Wave();
         lastOpenToday = due.Count;

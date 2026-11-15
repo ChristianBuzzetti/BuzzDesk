@@ -639,5 +639,21 @@ static class LocEn
         ["mes/día, y el año si lo sabés (para la edad): 3/22/1990"] = "month/day, and the year if you know it (for the age): 3/22/1990",
         ["{0} años"] = "{0} years",
         ["¿Eliminar \"{0}\"?"] = "Delete \"{0}\"?",
+        // ---- BuzzDesk day plan
+        ["Cambiar el plan"] = "Change the plan",
+        ["Elegí hasta 3 cosas que harían que hoy sea un buen día. El orden en que las marcás es su orden."] = "Pick up to 3 things that would make today a good day. The order you tick them is their order.",
+        ["Elegí las 3 cosas más importantes de hoy"] = "Pick today's 3 most important things",
+        ["Hoy:"] = "Today:",
+        ["No hay pendientes abiertos. Agregá alguno y volvé a planificar."] = "No open tasks. Add some and plan again.",
+        ["Plan del día vacío."] = "Day plan is empty.",
+        ["Plan del día: {0}"] = "Day plan: {0}",
+        ["Planificar mi día"] = "Plan my day",
+        ["Tus prioridades de hoy"] = "Your priorities today",
+        ["hábitos {0}/{1}"] = "habits {0}/{1}",
+        ["pendiente hecho"] = "task done",
+        ["pendientes hechos"] = "tasks done",
+        ["{0} de 3"] = "{0} of 3",
+        ["{0} de {1} prioridades"] = "{0} of {1} priorities",
+        ["¡Prioridades del día cumplidas!"] = "Today's priorities done!",
     };
 }
