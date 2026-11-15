@@ -108,9 +108,10 @@ public sealed class HabitsView : DeskView
             Text = h.DoneToday && h.Target == 1 ? "" : h.Target > 1 ? h.TodayCount + "/" + h.Target : "",
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold,
             FontSize = h.Target > 1 ? size * 0.28 : size * 0.4,
-            FontFamily = h.Target > 1 ? null : new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
         };
+        // Count in the mono face, check mark in the icon font (never a null FontFamily: WPF rejects it).
         if (h.Target > 1) label.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
+        else label.FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets");
         label.SetResourceReference(TextBlock.ForegroundProperty, h.DoneToday ? "OnAccent" : "Ink");
         var grid = new Grid { Width = size, Height = size, Cursor = Cursors.Hand, Opacity = applies || h.TodayCount > 0 ? 1 : 0.45, IsEnabled = !h.Archived,
             ToolTip = applies ? (h.Target == 1 ? L.T("Marcar hoy · clic derecho deshace") : L.T("Sumar uno · clic derecho resta")) : L.T("Hoy no toca (igual podés marcarlo)") };
