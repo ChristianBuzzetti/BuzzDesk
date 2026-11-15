@@ -16,7 +16,7 @@ public sealed class ListsView : DeskView
     readonly TextBlock progress = Ui.Text("", "Muted", 12, mono: true);
     readonly TextBox newItem = new() { Padding = new Thickness(10, 8, 10, 8) };
     readonly StackPanel items = new();
-    readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0) };
+    readonly WrapPanel actions = new() { Margin = new Thickness(0, 12, 0, 0) };
     readonly Border right;
     readonly TextBlock empty = Ui.Text("", "Muted");
     long? current;

@@ -91,8 +91,12 @@ public sealed class TodayView : DeskView
         if (lastOpenToday > 0 && due.Count == 0) stage?.Wave();
         lastOpenToday = due.Count;
 
-        if (overdue.Count > 0) body.Children.Add(TaskBlock(L.T("Atrasados"), "ErrorInk", overdue, today));
-        if (todays.Count > 0) body.Children.Add(TaskBlock(L.T("Para hoy"), "Accent", todays, today));
+        // Tasks already in the day plan lead the screen; they are not repeated below.
+        var planned = DayPlan.Get(today).Select(t => t.Id).ToHashSet();
+        var overdueRest = overdue.Where(t => !planned.Contains(t.Id)).ToList();
+        var todaysRest = todays.Where(t => !planned.Contains(t.Id)).ToList();
+        if (overdueRest.Count > 0) body.Children.Add(TaskBlock(L.T("Atrasados"), "ErrorInk", overdueRest, today));
+        if (todaysRest.Count > 0) body.Children.Add(TaskBlock(L.T("Para hoy"), "Accent", todaysRest, today));
         foreach (var block in Blocks)
             if (block(today) is FrameworkElement e) body.Children.Add(e);
         var next = Tasks.List(new TaskFilter(TaskScope.Upcoming, Limit: 5), today);

@@ -60,7 +60,7 @@ public sealed class SearchView : DeskView
         var grid = new Grid { MinHeight = 44, Background = System.Windows.Media.Brushes.Transparent, Cursor = Cursors.Hand };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
         grid.ColumnDefinitions.Add(new ColumnDefinition());
-        var glyph = Ui.Glyph(h.Kind switch { "task" => "", "topic" => "", "note" => "", "checklist" => "", "bill" => "", "date" => "", _ => "" }, 13);
+        var glyph = Ui.Glyph(h.Kind switch { "task" => "", "topic" => "", "note" => "", "checklist" => "", "bill" => "", "date" => "", _ => "" }, 13);
         glyph.HorizontalAlignment = HorizontalAlignment.Center;
         grid.Children.Add(glyph);
         var text = new StackPanel { Margin = new Thickness(0, 6, 8, 6), VerticalAlignment = VerticalAlignment.Center };
