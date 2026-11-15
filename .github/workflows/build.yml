@@ -1,0 +1,43 @@
+# Windows build: data tests, the self-contained app, the distributable zip and the README screenshots
+# (build.ps1 -Zip -Shot runs BuzzDesk on a throwaway demo database). Artifacts: the zip, docs/*.png, shots.log.
+name: build
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Data and domain tests
+        run: dotnet test tests/BuzzDesk.Tests --nologo -v q
+
+      - name: Build, zip and screenshots
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File .\build.ps1 -Zip -Shot
+
+      - name: Upload zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: BuzzDesk-win-x64
+          path: artifacts/BuzzDesk-*-win-x64.zip
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: |
+            docs/*.png
+            artifacts/shots/shots.log
+          if-no-files-found: warn

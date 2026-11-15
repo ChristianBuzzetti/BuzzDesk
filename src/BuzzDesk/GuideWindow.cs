@@ -228,7 +228,7 @@ public sealed class GuideWindow : Window
         var main = App.Current.Desk;
         if (main == null) return;
         // Quick capture opens next to the cursor: the guide steps aside first.
-        if (action is "quick") Close();
+        if (action is "quick" or "launcher") Close();
         main.GuideAction(action, this);
     }
 

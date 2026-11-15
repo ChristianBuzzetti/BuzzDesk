@@ -1,6 +1,6 @@
 ﻿param([switch]$Shot, [switch]$Zip, [switch]$Msix, [switch]$TestSign, [string]$Output = '')
 # Compila y publica BuzzDesk autocontenido (incluye .NET 10, no requiere instalar nada).
-# -Shot ejecuta además las capturas del README (base de datos de demostración temporal, nunca tus datos).
+# -Shot genera además las capturas del README en docs\ (base de datos de demostración temporal, nunca tus datos).
 # -Zip arma además artifacts\BuzzDesk-<versión>-win-x64.zip para distribuir.
 # -Msix arma además artifacts\store\BuzzDesk_<versión>.0_x64.msix para Microsoft Store: compilación STORE
 #      (inicio con Windows por StartupTask), logos y resources.pri. La identidad sale de packaging\store.json
@@ -121,8 +121,16 @@ if ($Msix) {
     }
 }
 if ($Shot) {
-    $dir = Join-Path $PSScriptRoot 'docs'
-    $p = Start-Process -FilePath (Join-Path $Output 'BuzzDesk.exe') -ArgumentList ('--shot "' + $dir + '"') -PassThru
+    # Capturas del README: base de demostración en artifacts\shots\demo, interfaz en inglés; los PNG van a docs\.
+    $dir = Join-Path $PSScriptRoot 'artifacts\shots'
+    if (Test-Path -LiteralPath $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
+    New-Item -ItemType Directory -Force $dir | Out-Null
+    $p = Start-Process -FilePath (Join-Path $Output 'BuzzDesk.exe') -ArgumentList ('--shot "' + $dir + '" --lang en') -PassThru
     if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'La verificación visual no terminó en 120 s.' }
     Get-Content (Join-Path $dir 'shots.log')
+    if ((Get-Content (Join-Path $dir 'shots.log') -Tail 1) -ne 'OK') { throw 'Las capturas fallaron: ver artifacts\shots\shots.log.' }
+    $docs = Join-Path $PSScriptRoot 'docs'
+    New-Item -ItemType Directory -Force $docs | Out-Null
+    Copy-Item -Path (Join-Path $dir '*.png') -Destination $docs -Force
+    Write-Output "Capturas en $docs"
 }

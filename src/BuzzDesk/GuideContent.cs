@@ -20,7 +20,7 @@ public static class GuideContent
     public static IReadOnlyList<GuideTopic> All()
     {
         var st = Store.Settings;
-        string quick = st.HotkeyCapture;
+        string quick = st.HotkeyCapture, launcher = st.HotkeyLauncher;
         var list = new List<GuideTopic>
         {
             new("start", "", S("Primeros pasos", "Getting started"),
@@ -104,18 +104,24 @@ public static class GuideContent
                     Tips(S("QUÉ PODÉS HACER", "WHAT YOU CAN DO"),
                         S("Guardar URL, título, descripción y etiquetas. El ícono del sitio se descarga solo.", "Save URL, title, description and tags. The site icon is fetched by itself."),
                         S("Fijar los más usados: aparecen en Hoy.", "Pin the ones you use most: they show up in Today."),
-                        S("Lanzador rápido: escribí parte del nombre y Enter para abrirlo en el navegador.", "Quick launcher: type part of the name and press Enter to open it in the browser."),
-                        S("Pegá una URL en la captura rápida para guardarla como enlace.", "Paste a URL in quick capture to save it as a link.")),
+                        S($"Lanzador rápido ({launcher} desde cualquier programa, Ctrl+L en BuzzDesk): escribí parte del nombre y Enter.", $"Quick launcher ({launcher} from any app, Ctrl+L in BuzzDesk): type part of the name and press Enter."),
+                        S("Los más usados y los fijados aparecen primero.", "The most used and the pinned ones come first."),
+                        S("Pegá una URL en la captura rápida, o en la búsqueda de Enlaces, para guardarla como enlace.", "Paste a URL in quick capture, or in the Links search box, to save it as a link."),
+                        S("En un tema, \"Vincular enlace…\" suma el ticket, el documento o el dashboard.", "In a topic, \"Link existing…\" adds the ticket, the document or the dashboard.")),
                 ],
-                [(S("Ir a Enlaces", "Go to Links"), "links")]),
+                [(S("Ir a Enlaces", "Go to Links"), "links"), (S("Abrir el lanzador", "Open the launcher"), "launcher")]),
 
             new("quick", "", S("Captura rápida", "Quick capture"),
                 S("Una ventanita junto al cursor para anotar algo en dos segundos, sin dejar lo que estás haciendo.", "A small window next to the cursor to jot something down in two seconds, without leaving what you're doing."),
                 [
                     Steps(S("CÓMO SE USA", "HOW TO USE IT"),
                         S($"Tocá {quick} desde cualquier programa.", $"Press {quick} from any app."),
-                        S("Elegí qué es: pendiente, nota o recordatorio (Tab cambia).", "Choose what it is: task, note or reminder (Tab switches)."),
-                        S("Escribí y Enter. Esc cierra sin guardar.", "Type and press Enter. Esc closes without saving.")),
+                        S("Elegí qué es: pendiente, nota, recordatorio o enlace (Tab cambia; pegar una dirección elige Enlace).", "Choose what it is: task, note, reminder or link (Tab switches; pasting an address picks Link)."),
+                        S("Escribí y Enter. Abajo ves qué se va a guardar. Esc cierra sin guardar.", "Type and press Enter. Below you see what will be saved. Esc closes without saving.")),
+                    Tips(S("BUENO SABER", "GOOD TO KNOW"),
+                        S("Un pendiente con hora (\"mañana 9:30\") también suena a esa hora.", "A task with a time (\"tomorrow 9:30\") also rings at that time."),
+                        S("Las notas sin tema quedan en Hoy, en Notas sueltas, para archivarlas después en un tema.", "Notes without a topic wait in Today, under Loose notes, to be filed in a topic later."),
+                        S("Si hacés clic afuera, el borrador te espera la próxima vez.", "If you click away, the draft waits for you next time.")),
                     Keys(S("ATAJOS DENTRO DEL TEXTO", "SHORTCUTS IN THE TEXT"),
                         ("!1 !2 !3", S("Prioridad baja, media o alta.", "Low, medium or high priority.")),
                         (S("hoy, mañana, lunes…", "today, tomorrow, monday…"), S("Vencimiento o día del recordatorio.", "Due date or reminder day.")),
@@ -128,7 +134,8 @@ public static class GuideContent
                 S("Una sola caja busca en pendientes, temas, notas y enlaces.", "One box searches tasks, topics, notes and links."),
                 [
                     Tips(S("CÓMO BUSCAR", "HOW TO SEARCH"),
-                        S("Ctrl+F y escribí. No importan mayúsculas ni tildes: \"revision\" encuentra \"revisión\".", "Ctrl+F and type. Case and accents don't matter."),
+                        S("Ctrl+F y escribí: busca en pendientes (y subtareas), temas, notas y enlaces, con sus etiquetas.", "Ctrl+F and type: it searches tasks (and subtasks), topics, notes and links, with their tags."),
+                        S("No importan mayúsculas ni tildes: \"revision\" encuentra \"revisión\".", "Case and accents don't matter."),
                         S("Busca por el comienzo de las palabras: \"migra\" encuentra \"migración\".", "It matches word beginnings: \"migra\" finds \"migration\"."),
                         S("Entre comillas, la frase exacta: \"plan de backup\".", "In quotes, the exact phrase: \"backup plan\"."),
                         S("Enter abre el primer resultado.", "Enter opens the first result.")),
@@ -136,13 +143,15 @@ public static class GuideContent
                 [(S("Buscar", "Search"), "search")]),
 
             new("keys", "", S("Atajos de teclado", "Keyboard shortcuts"),
-                S("Todos los atajos en un lugar. El global funciona desde cualquier programa.", "All shortcuts in one place. The global one works from any app."),
+                S("Todos los atajos en un lugar. Los globales funcionan desde cualquier programa.", "All shortcuts in one place. The global ones work from any app."),
                 [
-                    Keys(S("GLOBAL", "GLOBAL"), (quick, S("Captura rápida", "Quick capture"))),
+                    Keys(S("GLOBALES", "GLOBAL"), (quick, S("Captura rápida", "Quick capture")), (launcher, S("Lanzador de enlaces", "Link launcher"))),
                     Keys(S("EN LA VENTANA", "IN THE WINDOW"),
                         ("Ctrl+1 … Ctrl+4", S("Hoy, Pendientes, Temas, Enlaces", "Today, Tasks, Topics, Links")),
                         ("Ctrl+N", S("Nuevo en la vista actual", "New in the current view")),
                         ("Ctrl+F", S("Buscar en todo", "Search everything")),
+                        ("Ctrl+L", S("Lanzador de enlaces", "Link launcher")),
+                        (S("Espacio / Supr", "Space / Del"), S("En una lista de pendientes: completar / eliminar", "In a task list: complete / delete")),
                         ("F1", S("Esta guía", "This guide"))),
                 ],
                 []),
@@ -152,7 +161,8 @@ public static class GuideContent
                 [
                     Tips(S("DÓNDE ESTÁ CADA COSA", "WHERE THINGS ARE"),
                         S("Base de datos: %LOCALAPPDATA%\\BuzzDesk\\buzzdesk.db.", "Database: %LOCALAPPDATA%\\BuzzDesk\\buzzdesk.db."),
-                        S("Copias: %LOCALAPPDATA%\\BuzzDesk\\backups, una por día (14 días) y una por semana (8 semanas).", "Backups: %LOCALAPPDATA%\\BuzzDesk\\backups, one per day (14 days) and one per week (8 weeks)."),
+                        S("Copias: %LOCALAPPDATA%\\BuzzDesk\\backups, una por día (14 días) y una por semana (8 semanas), más una antes de cada actualización del esquema.", "Backups: %LOCALAPPDATA%\\BuzzDesk\\backups, one per day (14 days) and one per week (8 weeks), plus one before each schema update."),
+                        S("Para quien administra bases: SQLite en modo WAL, esquema versionado (tabla schema_version), tablas STRICT con claves foráneas, fechas en UTC y búsqueda FTS5.", "For DBAs: SQLite in WAL mode, a versioned schema (schema_version table), STRICT tables with foreign keys, dates in UTC and FTS5 search."),
                         S("Archivo → Hacer una copia de seguridad ahora, cuando quieras.", "File → Back up now, whenever you want.")),
                     Tips(S("PARA RESTAURAR", "TO RESTORE"),
                         S("Salí de BuzzDesk, copiá la copia que quieras sobre buzzdesk.db y volvé a abrir.", "Exit BuzzDesk, copy the backup you want over buzzdesk.db and open it again."),

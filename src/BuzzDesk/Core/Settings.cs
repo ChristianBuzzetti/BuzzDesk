@@ -69,8 +69,12 @@ namespace BuzzDesk
             SaveSettings();
         }
 
+        /// <summary>True during --shot: nothing the screenshots change reaches settings.json.</summary>
+        public static bool ReadOnly;
+
         public static void SaveSettings()
         {
+            if (ReadOnly) return;
             try { AtomicFiles.SaveUtf8(SettingsPath, Json.Serialize(Settings)); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }

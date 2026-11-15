@@ -438,6 +438,9 @@ public partial class MainWindow : Window
 
     void FocusSearchClick(object sender, RoutedEventArgs e) { Search.Focus(); Search.SelectAll(); }
 
+    /// <summary>Screenshots: types in the search box and runs it at once.</summary>
+    internal void ShotSearch(string text) { Search.Text = text; RunSearch(null, EventArgs.Empty); }
+
     /// <summary>Selects a link in Links (from search).</summary>
     public void OpenLink(long id)
     {
@@ -459,6 +462,7 @@ public partial class MainWindow : Window
             case "personalize": App.Current.OpenPersonalization(this); break;
             case "ai": AiSettingsClick(this, new RoutedEventArgs()); break;
             case "folder": DataFolderClick(this, new RoutedEventArgs()); break;
+            case "launcher": LauncherWindow.Toggle(); break;
         }
     }
 

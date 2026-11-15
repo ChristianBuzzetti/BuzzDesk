@@ -24,7 +24,7 @@ public sealed class QuickCaptureWindow : Window
     readonly TextBlock preview = Ui.Text("", "Muted", 12.5);
     readonly TextBlock title = Ui.Text("", "Muted", 10.5, FontWeights.Bold);
     string mode;
-    bool closing, saved, userPickedMode, switching;
+    bool closing, saved, userPickedMode, switching, shot;
 
     QuickCaptureWindow()
     {
@@ -88,10 +88,21 @@ public sealed class QuickCaptureWindow : Window
         box.TextChanged += (_, _) => { draft = box.Text; AutoMode(); UpdatePreview(); };
         box.PreviewKeyDown += Keys;
         target.SelectionChanged += (_, _) => UpdatePreview();
-        Deactivated += (_, _) => SafeClose();
+        Deactivated += (_, _) => { if (!shot) SafeClose(); };
         Closed += (_, _) => { if (open == this) open = null; };
         Loaded += (_, _) => { Activate(); box.Focus(); box.CaretIndex = box.Text.Length; };
         SetMode(mode);
+    }
+
+    /// <summary>For the screenshots: shown over the main window with sample text.</summary>
+    internal static QuickCaptureWindow ForShot(string text, Window owner)
+    {
+        var w = new QuickCaptureWindow { WindowStartupLocation = WindowStartupLocation.Manual };
+        w.Left = owner.Left + owner.Width / 2 - w.Width / 2; w.Top = owner.Top + 220;
+        w.shot = true;
+        w.box.Text = text;
+        w.Show();
+        return w;
     }
 
     public static void Toggle()

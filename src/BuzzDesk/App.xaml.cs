@@ -48,6 +48,7 @@ public partial class App : Application
         }
 
         Store.Init();
+        Store.ReadOnly = IsShot;
         L.Lang = Arg(e.Args, "--lang") is { Length: > 0 } forced ? forced : Store.Settings.Language == "es" ? "es" : "en";
         var culture = L.Culture;
         System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
@@ -67,7 +68,7 @@ public partial class App : Application
         if (Appearance.BobertoVisible) BobertoRuntime.Prewarm(BobertoRuntime.DefaultProfile);
 
         main = new MainWindow();
-        if (IsShot) return;
+        if (IsShot) { _ = Shots.RunAsync(main); return; }
 
         SetupTray();
         hotkeys = new HotkeyWindow();
@@ -138,7 +139,7 @@ public partial class App : Application
     {
         string path = DataFolder.File("buzzdesk.db");
         string backups = Store.Settings.BackupFolder.Length > 0 ? Store.Settings.BackupFolder : DataFolder.File("backups");
-        if (IsShot) { path = Path.Combine(ShotDir!, "demo", "buzzdesk.db"); backups = Path.Combine(ShotDir!, "demo", "backups"); if (File.Exists(path)) File.Delete(path); }
+        if (IsShot) { path = Path.Combine(ShotDir!, "demo", "buzzdesk.db"); backups = Path.Combine(ShotDir!, "demo", "backups"); foreach (var f in new[] { path, path + "-wal", path + "-shm" }) if (File.Exists(f)) File.Delete(f); }
         Db.Configure(path, backups);
         try
         {
