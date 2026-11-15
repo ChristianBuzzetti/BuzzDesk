@@ -464,3 +464,117 @@ public class UpgradeTests : IDisposable
         Assert.Contains(Search.Run("auditoria"), h => h.Kind == "task");
     }
 }
+
+[Collection("db")]
+public class PersonalTests : IDisposable
+{
+    readonly TempDb db = new();
+    static readonly DateOnly Today = new(2026, 11, 15);   // Sunday
+    public void Dispose() => db.Dispose();
+
+    [Fact]
+    public void Habit_streaks_respect_the_days_it_applies_and_the_target()
+    {
+        long water = Habits.Add("Agua", target: 2);
+        long gym = Habits.Add("Gimnasio", weekdaysMask: RecurrenceRule.Bit(DayOfWeek.Monday) | RecurrenceRule.Bit(DayOfWeek.Wednesday) | RecurrenceRule.Bit(DayOfWeek.Friday));
+        // Water: 2 a day for the last 4 days, but only 1 five days ago.
+        for (int i = 1; i <= 4; i++) { Habits.Mark(water, Today.AddDays(-i)); Habits.Mark(water, Today.AddDays(-i)); }
+        Habits.Mark(water, Today.AddDays(-5));
+        // Gym: Mon 2, Wed 4, Fri 6, Mon 9, Wed 11, Fri 13 — and Mon 16/11 is tomorrow.
+        foreach (int d in new[] { 2, 4, 6, 9, 11, 13 }) Habits.Mark(gym, new DateOnly(2026, 11, d));
+        var list = Habits.List(Today);
+        var w = list.Single(h => h.Id == water);
+        Assert.Equal(4, w.Streak);                 // today not done yet: still alive
+        Assert.Equal(0, w.TodayCount);
+        var g = list.Single(h => h.Id == gym);
+        Assert.Equal(6, g.Streak);                 // weekends don't break it
+        Assert.Equal(6, g.BestStreak);
+
+        Habits.Mark(water, Today); Habits.Mark(water, Today);
+        Assert.Equal(5, Habits.List(Today).Single(h => h.Id == water).Streak);
+        Assert.Equal(1, Habits.Mark(water, Today, -1));
+        Assert.Equal(0, Habits.Mark(water, Today, -1));
+        Assert.Empty(Habits.History(water, Today, Today));
+        // A missed applicable day breaks it.
+        Assert.Equal(0, Habits.List(Today.AddDays(2)).Single(h => h.Id == water).Streak);
+    }
+
+    [Fact]
+    public void Checklists_reuse_and_dedupe()
+    {
+        long super = Checklists.FindOrCreate("Súper");
+        Assert.Equal(super, Checklists.FindOrCreate("súper"));
+        Assert.Equal(3, Checklists.AddItems(super, ["leche", "pan", " café ", ""]));
+        var items = Checklists.Items(super);
+        Checklists.Toggle(items[0].Id);
+        Assert.Equal(0, Checklists.AddItems(super, ["Leche"]));   // already there: unticked instead of duplicated
+        Assert.All(Checklists.Items(super), i => Assert.False(i.Done));
+        Checklists.Toggle(items[1].Id);
+        Assert.Equal((3, 1), (Checklists.Get(super)!.Items, Checklists.Get(super)!.Done));
+        Checklists.Reset(super);
+        Assert.Equal(0, Checklists.Get(super)!.Done);
+        Checklists.Toggle(items[2].Id);
+        Checklists.ClearDone(super);
+        Assert.Equal(2, Checklists.Items(super).Count);
+        Assert.Contains(Search.Run("leche"), h => h.Kind == "checklist" && h.RefId == super);
+    }
+
+    [Fact]
+    public void Bills_pay_advance_undo_and_totals()
+    {
+        long light = Bills.Add(new Bill { Name = "Luz", AmountCents = 2_500_000, Currency = "ARS", NextDue = new DateOnly(2026, 11, 20), Recurrence = new RecurrenceRule(Freq.Monthly, 1, MonthDay: 20) });
+        long dni = Bills.Add(new Bill { Name = "DNI", Kind = "renewal", Currency = "ARS", NextDue = new DateOnly(2027, 3, 1), Recurrence = Bills.Yearly(new DateOnly(2027, 3, 1)) });
+        long netflix = Bills.Add(new Bill { Name = "Streaming", AmountCents = 999, Currency = "usd", NextDue = new DateOnly(2026, 11, 28), Recurrence = new RecurrenceRule(Freq.Monthly, 1, MonthDay: 28) });
+        Assert.Equal("USD", Bills.Get(netflix)!.Currency);
+        Assert.True(Bills.IsYearly(Bills.Get(dni)!.Recurrence));
+
+        long pay = Bills.Pay(light, 2_600_000, Today);
+        Assert.Equal(new DateOnly(2026, 12, 20), Bills.Get(light)!.NextDue);
+        Assert.Equal(new DateOnly(2027, 3, 1), Bills.Get(dni)!.NextDue);
+        var totals = Bills.MonthTotals(2026, 11);
+        Assert.Contains(("ARS", 2_600_000L, 0L), totals);
+        Assert.Contains(("USD", 0L, 999L), totals);
+        Bills.Unpay(pay);
+        Assert.Equal(new DateOnly(2026, 11, 20), Bills.Get(light)!.NextDue);
+        Assert.Empty(Bills.Payments(2026, 11));
+        Bills.Pay(dni, null, Today);
+        Assert.Equal(new DateOnly(2028, 3, 1), Bills.Get(dni)!.NextDue);
+
+        // A task edit must not delete the bills' rules (shared recurrence table).
+        long t = Tasks.Add(new Tasks.Draft("x", DueDate: Today, Recurrence: new RecurrenceRule(Freq.Daily)), Today);
+        Tasks.Update(Tasks.Get(t)! with { Recurrence = null });
+        Assert.NotNull(Bills.Get(light)!.Recurrence);
+        Assert.Throws<SqliteException>(() => Bills.Add(new Bill { Name = "Bad", Currency = "PESOS" }));
+    }
+
+    [Fact]
+    public void Important_dates_and_notices()
+    {
+        Dates.Add("Cumple de Ana", "birthday", 11, 18, 1990, "Ana");
+        Dates.Add("Leap", "birthday", 2, 29, 2000, remindDaysBefore: 0);
+        Assert.Throws<SqliteException>(() => Dates.Add("Bad", "birthday", 4, 31));
+        var up = Dates.Upcoming(Today, 7);
+        Assert.Single(up);
+        Assert.Equal(new DateOnly(2026, 11, 18), up[0].on);
+        Assert.Equal(36, up[0].date.YearsOn(up[0].on));
+        Assert.Equal(new DateOnly(2027, 2, 28), Dates.All().Single(d => d.Label == "Leap").Next(Today));   // 2027 is not a leap year
+        Assert.Contains(Search.Run("ana"), h => h.Kind == "date");
+
+        Bills.Add(new Bill { Name = "Gas", Currency = "ARS", NextDue = Today.AddDays(2), RemindDaysBefore = 3 });
+        var due = Notices.Due(Today);
+        Assert.Equal(2, due.Count);                // the bill (2 days) and Ana's birthday (3 days)
+        Notices.MarkFired(due);
+        Assert.Empty(Notices.Due(Today));
+    }
+
+    [Fact]
+    public void Day_plan_keeps_three_in_order()
+    {
+        var ids = Enumerable.Range(1, 4).Select(i => Tasks.Add(new Tasks.Draft("T" + i), Today)).ToList();
+        DayPlan.Set(Today, [ids[2], ids[0], ids[2], ids[1], ids[3]]);
+        Assert.Equal(["T3", "T1", "T2"], DayPlan.Get(Today).Select(t => t.Title));
+        Tasks.Delete(ids[0]);
+        Assert.Equal(["T3", "T2"], DayPlan.Get(Today).Select(t => t.Title));
+        Assert.Empty(DayPlan.Get(Today.AddDays(1)));
+    }
+}

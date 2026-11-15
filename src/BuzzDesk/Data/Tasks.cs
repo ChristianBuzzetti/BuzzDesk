@@ -105,7 +105,7 @@ public static class Tasks
         return id;
     }
 
-    static long InsertRule(SqliteConnection c, RecurrenceRule rule) => Db.Insert(c,
+    internal static long InsertRule(SqliteConnection c, RecurrenceRule rule) => Db.Insert(c,
         "INSERT INTO recurrence(freq, interval, weekdays_mask, month_day, until_date, created_utc) VALUES ($f, $i, $w, $m, $u, $t)",
         ("$f", RecurrenceRule.ToDb(rule.Freq)), ("$i", Math.Clamp(rule.Interval, 1, 365)), ("$w", rule.WeekdaysMask), ("$m", rule.MonthDay), ("$u", Db.Value(rule.Until)), ("$t", Db.NowUtc()));
 
@@ -125,7 +125,7 @@ public static class Tasks
             ("$due", Db.Value(t.DueDate)), ("$time", t.DueDate == null ? null : Db.Value(t.DueTime)), ("$r", recurrenceId), ("$now", Db.NowUtc()), ("$id", t.Id));
         if (tags != null) SetTags(c, t.Id, tags);
         // A series' old rule row is kept while instances (done ones too) still point at it; orphans go.
-        Db.Exec(c, "DELETE FROM recurrence WHERE id NOT IN (SELECT recurrence_id FROM task WHERE recurrence_id IS NOT NULL)");
+        Recurrences.PruneUnused(c);
     });
 
     static void SetTags(SqliteConnection c, long taskId, IEnumerable<string> names)
@@ -201,4 +201,14 @@ public static class Tasks
 
     static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
     public static string Like(string s) => s.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+}
+
+/// <summary>Recurrence rules are shared by tasks and bills: a rule goes only when nothing points at it.</summary>
+public static class Recurrences
+{
+    public static int PruneUnused(SqliteConnection c) => Db.Exec(c, """
+        DELETE FROM recurrence
+         WHERE NOT EXISTS (SELECT 1 FROM task t WHERE t.recurrence_id = recurrence.id)
+           AND NOT EXISTS (SELECT 1 FROM bill b WHERE b.recurrence_id = recurrence.id)
+        """);
 }
