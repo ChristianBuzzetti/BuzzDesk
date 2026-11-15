@@ -310,3 +310,66 @@ public class TopicTests : IDisposable
         Assert.Equal(1, Topics.Get(id)!.Notes);
     }
 }
+
+[Collection("db")]
+public class LinkTests : IDisposable
+{
+    readonly TempDb db = new();
+    public void Dispose() => db.Dispose();
+
+    [Theory]
+    [InlineData("grafana.local/d/abc", "https://grafana.local/d/abc")]
+    [InlineData("http://intranet", "http://intranet")]
+    [InlineData("mailto:dba@empresa.com", "mailto:dba@empresa.com")]
+    [InlineData(@"C:\docs\runbook.pdf", "file:///C:/docs/runbook.pdf")]
+    [InlineData("ftp://x", null)]
+    [InlineData("  ", null)]
+    public void Normalize(string input, string? expected) => Assert.Equal(expected, Links.Normalize(input));
+
+    [Fact]
+    public void Add_search_launch_pin_and_topics()
+    {
+        var (grafana, _) = Links.Add("https://grafana.local", "Grafana", "Dashboards de monitoreo", ["mon"]);
+        var (wiki, _) = Links.Add("https://wiki.local/dba", "Wiki DBA", tags: ["docs"]);
+        var (again, existed) = Links.Add("https://grafana.local", "Otro título");
+        Assert.True(existed);
+        Assert.Equal(grafana, again);
+
+        Assert.Equal(["Grafana"], Links.List("monitoreo").Select(l => l.Title));
+        Assert.Equal(["Wiki DBA"], Links.List("docs").Select(l => l.Title));        // by tag
+        Assert.Equal(["Wiki DBA"], Links.List("wiki dba").Select(l => l.Title));    // every word
+
+        Links.Opened(wiki); Links.Opened(wiki);
+        Assert.Equal(wiki, Links.Launch("")[0].Id);                                  // most used first
+        Assert.Equal(grafana, Links.Launch("gra")[0].Id);                            // prefix wins
+
+        Links.SetPinned(grafana, true);
+        Assert.Equal([grafana], Links.List(pinnedOnly: true).Select(l => l.Id));
+
+        long topic = Topics.Add("Monitoreo");
+        Links.Attach(topic, grafana); Links.Attach(topic, grafana);
+        Assert.Single(Links.ForTopic(topic));
+        Links.Detach(topic, grafana);
+        Assert.Empty(Links.ForTopic(topic));
+    }
+
+    [Fact]
+    public void Deleted_url_can_be_saved_again_and_restore_does_not_duplicate()
+    {
+        var (a, _) = Links.Add("https://x.local", "X");
+        Links.Delete(a);
+        var (b, existed) = Links.Add("https://x.local", "X again");
+        Assert.False(existed);
+        Assert.NotEqual(a, b);
+        Assert.False(Links.Restore(a));   // the URL is live again: unique index ux_link_url
+    }
+
+    [Fact]
+    public void Favicon_size_is_limited()
+    {
+        var (id, _) = Links.Add("https://big.local", "Big");
+        Links.SetFavicon(id, new byte[1024]);
+        Assert.Equal(1024, Links.Get(id)!.Favicon!.Length);
+        Assert.Throws<SqliteException>(() => Links.SetFavicon(id, new byte[300_000]));
+    }
+}

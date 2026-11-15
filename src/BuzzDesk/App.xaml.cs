@@ -323,6 +323,7 @@ public partial class App : Application
             menu.Items.Add(m);
         }
         Item(L.T("Captura rápida"), Store.Settings.HotkeyCapture, QuickCapture);
+        Item(L.T("Abrir enlace…"), Store.Settings.HotkeyLauncher, () => LauncherWindow.Toggle());
         menu.Items.Add(new Separator());
         try
         {
@@ -379,19 +380,24 @@ public partial class App : Application
 
     // ------------------------------------------------------------------ hotkeys
     public string CaptureHotkeyText { get; private set; } = "";
-    const int HotkeyQuickCapture = 1;
+    const int HotkeyQuickCapture = 1, HotkeyLauncher = 2;
 
     void RegisterHotkeys()
     {
         var st = Store.Settings;
+        string fails = "";
         if (hotkeys!.Register(HotkeyQuickCapture, st.HotkeyCapture)) CaptureHotkeyText = st.HotkeyCapture;
-        else { CaptureHotkeyText = ""; Toast(L.T("Atajos de teclado"), L.F("No se pudo registrar {0}.", st.HotkeyCapture)); }
+        else { CaptureHotkeyText = ""; fails += L.F("No se pudo registrar {0}.", st.HotkeyCapture) + "\n"; }
+        if (!hotkeys.Register(HotkeyLauncher, st.HotkeyLauncher)) fails += L.F("No se pudo registrar {0}.", st.HotkeyLauncher) + "\n";
+        // Another app may hold a key: say which, once (BuzzDesk keeps working, the menus still open everything).
+        if (fails.Length > 0) Toast(L.T("Atajos de teclado"), fails.Trim());
         main?.RefreshShortcuts();
     }
 
     internal void OnHotkey(int id)
     {
         if (id == HotkeyQuickCapture) QuickCapture();
+        else if (id == HotkeyLauncher) LauncherWindow.Toggle();
     }
 
     // ------------------------------------------------------------------ startup with Windows

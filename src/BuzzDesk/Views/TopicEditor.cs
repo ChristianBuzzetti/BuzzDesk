@@ -26,6 +26,7 @@ public sealed class TopicEditor : Border
     readonly TextBox newTask = new();
     readonly TextBox newNote = new() { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 54, MaxHeight = 160, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     readonly StackPanel timeline = new();
+    readonly StackPanel linkList = new();
     readonly StackPanel body = new();
     readonly TextBlock empty = Ui.Text("", "Muted");
     readonly StackPanel reminders;
@@ -92,6 +93,22 @@ public sealed class TopicEditor : Border
         reminders = ReminderUi.EditorBlock(() => topic == null ? [] : Reminders.ForTopic(topic.Id), utc => Reminders.Add(utc, topicId: topic!.Id));
         body.Children.Add(reminders);
         body.Children.Add(Extras);
+        // Links of the topic: the ticket, the document, the dashboard.
+        body.Children.Add(Ui.Label(L.T("Enlaces del tema")));
+        body.Children.Add(linkList);
+        var linkActions = new WrapPanel();
+        linkActions.Children.Add(Ui.ToolButton("\uE71B", L.T("Vincular enlace…"), (_, _) =>
+        {
+            if (topic == null) return;
+            long id = topic.Id;
+            LauncherWindow.Toggle(l => { Links.Attach(id, l.Id); LoadLinks(); }, L.T("Vincular enlace al tema"));
+        }));
+        linkActions.Children.Add(Ui.ToolButton("\uE710", L.T("Nuevo enlace…"), (_, _) =>
+        {
+            if (topic == null) return;
+            if (LinkWindow.Edit(Window.GetWindow(this), null) is long id) { Links.Attach(topic.Id, id); LoadLinks(); }
+        }));
+        body.Children.Add(linkActions);
 
         body.Children.Add(Ui.Label(L.T("Pendientes del tema")));
         body.Children.Add(taskList);
@@ -160,6 +177,7 @@ public sealed class TopicEditor : Border
             description.Text = t.Description ?? "";
             ((Action)reminders.Tag)();
             LoadTasks();
+            LoadLinks();
             LoadTimeline();
         }
         finally { loading = false; }
@@ -192,6 +210,18 @@ public sealed class TopicEditor : Border
     }
 
     MainWindow? Host() => Window.GetWindow(this) as MainWindow;
+
+    void LoadLinks()
+    {
+        linkList.Children.Clear();
+        if (topic == null) return;
+        long id = topic.Id;
+        foreach (var l in Links.ForTopic(id))
+        {
+            var link = l;
+            linkList.Children.Add(LinkUi.Row(l, x => { LinkWindow.Edit(Window.GetWindow(this), x); LoadLinks(); }, detach: () => { Links.Detach(id, link.Id); LoadLinks(); }));
+        }
+    }
 
     void LoadTimeline()
     {

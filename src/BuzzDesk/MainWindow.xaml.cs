@@ -43,6 +43,7 @@ public partial class MainWindow : Window
         Db.Changed += what => ScheduleRefresh(what == "section");
         TodayView.Blocks.Add(ReminderUi.TodayBlock);
         TodayView.Blocks.Add(TopicsView.TodayBlock);
+        TodayView.Blocks.Add(LinkUi.TodayBlock);
         App.Current.DayChanged += () => ScheduleRefresh(false);
 
         OnAppearance(appearance);
@@ -78,6 +79,8 @@ public partial class MainWindow : Window
         NavTodayCount.Text = dueToday + overdue > 0 ? (dueToday + overdue).ToString() : "";
         NavTodayCount.SetResourceReference(TextBlock.ForegroundProperty, overdue > 0 ? "ErrorInk" : "LineNumber");
         NavTasksCount.Text = open > 0 ? open.ToString() : "";
+        int links = Links.Count();
+        NavLinksCount.Text = links > 0 ? links.ToString() : "";
         var (review, _, openTopics) = Topics.Counts(Clock.Today);
         NavTopicsCount.Text = review > 0 ? review + " / " + openTopics : openTopics > 0 ? openTopics.ToString() : "";
         NavTopicsCount.SetResourceReference(TextBlock.ForegroundProperty, review > 0 ? "Accent" : "LineNumber");
@@ -184,7 +187,7 @@ public partial class MainWindow : Window
     {
         "tasks" => new TasksView(),
         "topics" => new TopicsView(),
-        "links" => new PlaceholderView("links", L.T("Enlaces")),
+        "links" => new LinksView(),
         _ => new TodayView(),
     };
 
@@ -446,6 +449,7 @@ public partial class MainWindow : Window
         else if (ctrl && e.Key is Key.D3 or Key.NumPad3) { Navigate("topics"); e.Handled = true; }
         else if (ctrl && e.Key is Key.D4 or Key.NumPad4) { Navigate("links"); e.Handled = true; }
         else if (ctrl && e.Key == Key.N) { current?.New(); e.Handled = true; }
+        else if (ctrl && e.Key == Key.L) { LauncherWindow.Toggle(); e.Handled = true; }
     }
 
     // ================================================================== commands
