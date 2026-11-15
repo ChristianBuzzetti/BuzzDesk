@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace BuzzDesk;
@@ -80,4 +81,30 @@ public static class Ui
     }
 
     public static ScrollViewer Scroll(UIElement content) => new() { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+}
+
+/// <summary>A small on/off chip (weekdays of a repeat or a habit).</summary>
+public sealed class DayChip : Border
+{
+    public int Bit { get; }
+    bool on;
+    public event Action? Changed;
+    readonly TextBlock label;
+    public bool IsOn { get => on; set { on = value; Paint(); } }
+    public DayChip(string text, int bit)
+    {
+        Bit = bit;
+        label = new TextBlock { Text = text, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        Child = label;
+        Width = 40; Height = 28; Margin = new Thickness(0, 0, 4, 4); BorderThickness = new Thickness(1); Cursor = Cursors.Hand;
+        SetResourceReference(CornerRadiusProperty, "ControlRadius");
+        MouseLeftButtonUp += (_, _) => { IsOn = !IsOn; Changed?.Invoke(); };
+        Paint();
+    }
+    void Paint()
+    {
+        SetResourceReference(BackgroundProperty, on ? "AccentWeak" : "Surface");
+        SetResourceReference(BorderBrushProperty, on ? "AccentCardRing" : "FaintBorder");
+        label.SetResourceReference(TextBlock.ForegroundProperty, on ? "Accent" : "Muted");
+    }
 }

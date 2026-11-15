@@ -66,6 +66,7 @@ public sealed class TodayView : DeskView
     }
 
     public override void Shown() { base.Shown(); stage?.Wave(); }
+    public void Wave() => stage?.Wave();
 
     public override void Refresh()
     {

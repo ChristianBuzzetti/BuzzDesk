@@ -109,7 +109,7 @@ public sealed class TaskEditor : Border
         for (int i = 0; i < 7; i++)
         {
             int bit = 1 << i;
-            var chip = new ToggleButton(L.Culture.DateTimeFormat.AbbreviatedDayNames[(i + 1) % 7], bit);
+            var chip = new DayChip(L.Culture.DateTimeFormat.AbbreviatedDayNames[(i + 1) % 7], bit);
             chip.Changed += () => SaveRepeat();
             weekdays.Children.Add(chip);
         }
@@ -235,7 +235,7 @@ public sealed class TaskEditor : Border
             repeat.SelectedItem = repeat.Items.Cast<ComboBoxItem>().First(i => (string)i.Tag == freq);
             interval.Text = (r?.Interval ?? 1).ToString();
             int mask = r?.WeekdaysMask ?? (t.DueDate is DateOnly d ? RecurrenceRule.Bit(d.DayOfWeek) : 0);
-            foreach (ToggleButton chip in weekdays.Children) chip.IsOn = (mask & chip.Bit) != 0;
+            foreach (DayChip chip in weekdays.Children) chip.IsOn = (mask & chip.Bit) != 0;
             monthDay.Text = (r?.MonthDay ?? t.DueDate?.Day ?? Clock.Today.Day).ToString();
             ShowRepeatDetail();
             tags.Text = string.Join(", ", t.Tags);
@@ -313,7 +313,7 @@ public sealed class TaskEditor : Border
         string freq = (string)((ComboBoxItem)repeat.SelectedItem).Tag;
         if (freq.Length == 0) return null;
         int every = int.TryParse(interval.Text.Trim(), out int n) ? Math.Clamp(n, 1, 365) : 1;
-        int mask = weekdays.Children.Cast<ToggleButton>().Where(c => c.IsOn).Sum(c => c.Bit);
+        int mask = weekdays.Children.Cast<DayChip>().Where(c => c.IsOn).Sum(c => c.Bit);
         int? day = int.TryParse(monthDay.Text.Trim(), out int d) ? Math.Clamp(d, 1, 31) : null;
         var f = RecurrenceRule.FromDb(freq);
         return new RecurrenceRule(f, f == Freq.LastBusinessDay ? 1 : every, f == Freq.Weekly && mask > 0 ? mask : null, f == Freq.Monthly ? day : null, task?.Recurrence?.Until);
@@ -370,29 +370,4 @@ public sealed class TaskEditor : Border
         finally { loading = false; }
     }
 
-    /// <summary>Weekday chip for weekly repeats.</summary>
-    sealed class ToggleButton : Border
-    {
-        public int Bit { get; }
-        bool on;
-        public event Action? Changed;
-        readonly TextBlock label;
-        public bool IsOn { get => on; set { on = value; Paint(); } }
-        public ToggleButton(string text, int bit)
-        {
-            Bit = bit;
-            label = new TextBlock { Text = text, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            Child = label;
-            Width = 40; Height = 28; Margin = new Thickness(0, 0, 4, 4); BorderThickness = new Thickness(1); Cursor = Cursors.Hand;
-            SetResourceReference(CornerRadiusProperty, "ControlRadius");
-            MouseLeftButtonUp += (_, _) => { IsOn = !IsOn; Changed?.Invoke(); };
-            Paint();
-        }
-        void Paint()
-        {
-            SetResourceReference(BackgroundProperty, on ? "AccentWeak" : "Surface");
-            SetResourceReference(BorderBrushProperty, on ? "AccentCardRing" : "FaintBorder");
-            label.SetResourceReference(TextBlock.ForegroundProperty, on ? "Accent" : "Muted");
-        }
-    }
 }

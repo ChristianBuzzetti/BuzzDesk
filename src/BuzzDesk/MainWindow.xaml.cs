@@ -41,6 +41,7 @@ public partial class MainWindow : Window
         Clock.Changed += () => { ShowZone(); current?.Refresh(); };
 
         Db.Changed += what => ScheduleRefresh(what == "section");
+        TodayView.Blocks.Add(HabitsView.TodayBlock);
         TodayView.Blocks.Add(ReminderUi.TodayBlock);
         TodayView.Blocks.Add(TopicsView.TodayBlock);
         TodayView.Blocks.Add(InboxUi.TodayBlock);
@@ -80,6 +81,8 @@ public partial class MainWindow : Window
         NavTodayCount.Text = dueToday + overdue > 0 ? (dueToday + overdue).ToString() : "";
         NavTodayCount.SetResourceReference(TextBlock.ForegroundProperty, overdue > 0 ? "ErrorInk" : "LineNumber");
         NavTasksCount.Text = open > 0 ? open.ToString() : "";
+        var habits = Habits.List(Clock.Today).Where(h => h.AppliesOn(Clock.Today)).ToList();
+        NavHabitsCount.Text = habits.Count > 0 ? habits.Count(h => h.DoneToday) + "/" + habits.Count : "";
         int links = Links.Count();
         NavLinksCount.Text = links > 0 ? links.ToString() : "";
         var (review, _, openTopics) = Topics.Counts(Clock.Today);
@@ -190,19 +193,20 @@ public partial class MainWindow : Window
         "topics" => new TopicsView(),
         "links" => new LinksView(),
         "search" => new SearchView(),
+        "habits" => new HabitsView(),
         _ => new TodayView(),
     };
 
     public void Navigate(string key)
     {
-        if (key is not ("today" or "tasks" or "topics" or "links" or "search")) key = "today";
+        if (key is not ("today" or "tasks" or "topics" or "links" or "search" or "habits" or "lists" or "bills" or "dates")) key = "today";
         if (!views.TryGetValue(key, out var view)) { view = CreateView(key); views[key] = view; }
         current = view;
         ViewHost.Content = view;
         ViewToolbar.Children.Clear();
         view.BuildToolbar(ViewToolbar);
         view.Shown();
-        var nav = key switch { "tasks" => NavTasks, "topics" => NavTopics, "links" => NavLinks, "search" => NavSearch, _ => NavToday };
+        var nav = key switch { "tasks" => NavTasks, "topics" => NavTopics, "links" => NavLinks, "search" => NavSearch, "habits" => NavHabits, "lists" => NavLists, "bills" => NavBills, "dates" => NavDates, _ => NavToday };
         if (view is TasksView { SectionId: long sid } && sectionNav.TryGetValue(sid, out var sn)) { if (sn.button.IsChecked != true) sn.button.IsChecked = true; }
         else if (nav.IsChecked != true) nav.IsChecked = true;
         if (key != "search" && Store.Settings.LastNav != key) { Store.Settings.LastNav = key; Store.SaveSettings(); }
@@ -232,6 +236,13 @@ public partial class MainWindow : Window
 
     Action? statusAction;
     /// <summary>Footer message, optionally with an action button (Undo) that disappears with the next message.</summary>
+    /// <summary>A small win: Boberto waves and the footer says it.</summary>
+    public void Celebrate(string text)
+    {
+        SetStatus(text);
+        if (views.TryGetValue("today", out var t) && t is TodayView today) today.Wave();
+    }
+
     public void SetStatus(string text, string? actionLabel = null, Action? action = null)
     {
         StatusText.Text = text;
