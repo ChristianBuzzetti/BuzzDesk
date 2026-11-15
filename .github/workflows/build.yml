@@ -49,13 +49,14 @@ jobs:
             artifacts/shots/shots.log
           if-no-files-found: warn
 
-      # Manual run with commit_screenshots: the README pictures go into the branch (no CI loop: [skip ci]).
+      # Manual run with commit_screenshots, or a push whose message says [shots]: the README pictures go into the
+      # branch (the bot's commit says [skip ci], so no loop).
       - name: Commit screenshots
-        if: github.event_name == 'workflow_dispatch' && inputs.commit_screenshots
+        if: (github.event_name == 'workflow_dispatch' && inputs.commit_screenshots) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[shots]'))
         shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/*.png
           git diff --cached --quiet
-          if ($LASTEXITCODE -ne 0) { git commit -m "docs: README screenshots [skip ci]"; git push }
+          if ($LASTEXITCODE -ne 0) { git commit -m "docs: README screenshots [skip ci]"; git push origin HEAD:${{ github.ref_name }} }
