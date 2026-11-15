@@ -42,6 +42,7 @@ public partial class MainWindow : Window
 
         Db.Changed += what => ScheduleRefresh(what == "section");
         TodayView.Blocks.Add(ReminderUi.TodayBlock);
+        TodayView.Blocks.Add(TopicsView.TodayBlock);
         App.Current.DayChanged += () => ScheduleRefresh(false);
 
         OnAppearance(appearance);
@@ -77,6 +78,10 @@ public partial class MainWindow : Window
         NavTodayCount.Text = dueToday + overdue > 0 ? (dueToday + overdue).ToString() : "";
         NavTodayCount.SetResourceReference(TextBlock.ForegroundProperty, overdue > 0 ? "ErrorInk" : "LineNumber");
         NavTasksCount.Text = open > 0 ? open.ToString() : "";
+        var (review, _, openTopics) = Topics.Counts(Clock.Today);
+        NavTopicsCount.Text = review > 0 ? review + " / " + openTopics : openTopics > 0 ? openTopics.ToString() : "";
+        NavTopicsCount.SetResourceReference(TextBlock.ForegroundProperty, review > 0 ? "Accent" : "LineNumber");
+        NavTopics.ToolTip = review > 0 ? L.F("{0} para revisar hoy", review) : null;
         DbStatus.Text = "buzzdesk.db · v" + Migrator.All.Count;
     }
 
@@ -178,7 +183,7 @@ public partial class MainWindow : Window
     DeskView CreateView(string key) => key switch
     {
         "tasks" => new TasksView(),
-        "topics" => new PlaceholderView("topics", L.T("Temas")),
+        "topics" => new TopicsView(),
         "links" => new PlaceholderView("links", L.T("Enlaces")),
         _ => new TodayView(),
     };
@@ -466,8 +471,12 @@ public partial class MainWindow : Window
     void StartupClick(object sender, RoutedEventArgs e) { App.StartupEnabled = StartupMenu.IsChecked; SyncStartupMenu(); }
     public void SyncStartupMenu() => StartupMenu.IsChecked = App.StartupEnabled;
 
-    /// <summary>Opens a topic (until Topics exists, the Topics page).</summary>
-    public void OpenTopic(long id) => Navigate("topics");
+    /// <summary>Opens a topic in Topics (from Today, a task, search or a reminder).</summary>
+    public void OpenTopic(long id)
+    {
+        Navigate("topics");
+        ((TopicsView)views["topics"]).Select(id);
+    }
     void ComponentsClick(object sender, RoutedEventArgs e) => _ = App.Current.CheckComponentsAsync();
     void AboutClick(object sender, RoutedEventArgs e) => AboutWindow.Show(this);
     void LangEnClick(object sender, RoutedEventArgs e) => SetLanguage("en");

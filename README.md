@@ -36,7 +36,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1 -Zip     # also artifacts\B
 | 1. Skeleton, appearance, Boberto, icon | done |
 | 2. SQLite, Today, Tasks | done |
 | 3. Reminders, tray | done |
-| 4. Topics | |
+| 4. Topics | done |
 | 5. Links | |
 | 6. Quick capture, search | |
 | 7. Guide, README with screenshots, `build -Zip` | |

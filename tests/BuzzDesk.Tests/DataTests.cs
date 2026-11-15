@@ -254,3 +254,59 @@ public class SchemaLintTests : IDisposable
         Assert.Empty(loose);
     }
 }
+
+[Collection("db")]
+public class TopicTests : IDisposable
+{
+    readonly TempDb db = new();
+    static readonly DateOnly Today = new(2026, 11, 15);
+    public void Dispose() => db.Dispose();
+
+    [Fact]
+    public void Status_waiting_review_and_timeline()
+    {
+        long id = Topics.Add("Migración a SQL 2025", nextReview: Today, tags: ["migracion"]);
+        Topics.AddNote(id, "Pedido el ambiente a infraestructura");
+        Topics.SetStatus(id, TopicState.Waiting, "Juan Pérez", "Esperando a Juan Pérez");
+        var t = Topics.Get(id)!;
+        Assert.Equal(TopicState.Waiting, t.Status);
+        Assert.Equal("Juan Pérez", t.WaitingOn);
+        Assert.NotNull(t.WaitingSinceUtc);
+        Assert.True(t.ReviewDue(Today));
+        Assert.Equal((1, 1, 1), Topics.Counts(Today));
+        Assert.Single(Topics.List(TopicScope.Review, Today));
+
+        // Same person again: nothing changes, no extra timeline line.
+        Topics.SetStatus(id, TopicState.Waiting, "juan pérez", "dup");
+        Assert.Equal(2, Topics.Timeline(id).Count);
+
+        Topics.Reviewed(id, Today.AddDays(7), "Revisado");
+        Assert.False(Topics.Get(id)!.ReviewDue(Today));
+        Topics.SetStatus(id, TopicState.Closed, null, "Cerrado");
+        t = Topics.Get(id)!;
+        Assert.Equal(TopicState.Closed, t.Status);
+        Assert.Null(t.WaitingOnId);
+        Assert.NotNull(t.ClosedUtc);
+        Assert.Equal(["status", "system", "status", "note"], Topics.Timeline(id).Select(n => n.Kind));
+        Assert.Empty(Topics.List(TopicScope.Open, Today));
+        Assert.Single(Topics.List(TopicScope.Closed, Today));
+    }
+
+    [Fact]
+    public void Waiting_requires_a_person() =>
+        Assert.Throws<ArgumentException>(() => Topics.SetStatus(Topics.Add("X"), TopicState.Waiting, " ", "x"));
+
+    [Fact]
+    public void Tasks_belong_to_a_topic_and_loose_notes_can_be_filed()
+    {
+        long id = Topics.Add("Incidente backups");
+        Tasks.Add(new Tasks.Draft("Revisar job", TopicId: id), Today);
+        Assert.Equal(1, Topics.Get(id)!.OpenTasks);
+        Assert.Single(Tasks.List(new TaskFilter(TaskScope.Open, TopicId: id), Today));
+        long note = Topics.AddNote(null, "Ver logs del agente");
+        Assert.Single(Topics.Inbox());
+        Topics.FileNote(note, id);
+        Assert.Empty(Topics.Inbox());
+        Assert.Equal(1, Topics.Get(id)!.Notes);
+    }
+}

@@ -16,6 +16,7 @@ public sealed class TaskEditor : Border
     readonly TextBox title = new() { FontSize = 16, TextWrapping = TextWrapping.Wrap, AcceptsReturn = false, Padding = new Thickness(8, 6, 8, 6) };
     readonly ComboBox section = new() { MinWidth = 160 };
     readonly ComboBox priority = new() { MinWidth = 120 };
+    readonly ComboBox topicBox = new() { MinWidth = 200, MaxWidth = 340 };
     readonly TextBox dueDate = new() { MinWidth = 150 };
     readonly TextBox dueTime = new() { Width = 70 };
     readonly TextBlock dueHint = Ui.Text("", "Muted", 11.5);
@@ -58,6 +59,11 @@ public sealed class TaskEditor : Border
         for (int p = 3; p >= 0; p--) priority.Items.Add(new ComboBoxItem { Content = Fmt.Priority(p), Tag = p });
         row.Children.Add(Field(L.T("Prioridad"), priority));
         body.Children.Add(row);
+        var topicRow = new StackPanel { Orientation = Orientation.Horizontal };
+        topicRow.Children.Add(topicBox);
+        topicRow.Children.Add(Ui.IconButton("\uE8A7", (_, _) => { if (task?.TopicId is long tp) (Window.GetWindow(this) as MainWindow)?.OpenTopic(tp); }, L.T("Abrir el tema")));
+        body.Children.Add(Field(L.T("Tema"), topicRow));
+        topicBox.SelectionChanged += (_, _) => Save();
         section.SelectionChanged += (_, _) => Save();
         priority.SelectionChanged += (_, _) => Save();
 
@@ -214,6 +220,13 @@ public sealed class TaskEditor : Border
                 section.Items.Add(new ComboBoxItem { Content = (s.IsArea ? "" : "    ") + s.Name, Tag = s.Id });
             section.SelectedItem = section.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (long?)i.Tag == t.SectionId) ?? section.Items[0];
             priority.SelectedItem = priority.Items.Cast<ComboBoxItem>().First(i => (int)i.Tag == t.Priority);
+            topicBox.Items.Clear();
+            topicBox.Items.Add(new ComboBoxItem { Content = L.T("(Ninguno)"), Tag = null });
+            foreach (var tp in Topics.List(TopicScope.Open, Clock.Today))
+                topicBox.Items.Add(new ComboBoxItem { Content = tp.Title, Tag = tp.Id });
+            if (t.TopicId is long current && !topicBox.Items.Cast<ComboBoxItem>().Any(i => (long?)i.Tag == current))
+                topicBox.Items.Add(new ComboBoxItem { Content = t.TopicTitle ?? "#" + current, Tag = current });
+            topicBox.SelectedItem = topicBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (long?)i.Tag == t.TopicId) ?? topicBox.Items[0];
             dueDate.Text = Fmt.DateBox(t.DueDate);
             dueTime.Text = t.DueTime is TimeOnly time ? time.ToString("HH:mm") : "";
             ShowDueHint();
@@ -333,6 +346,7 @@ public sealed class TaskEditor : Border
             Title = title.Text.Trim(),
             SectionId = (long?)((ComboBoxItem?)section.SelectedItem)?.Tag,
             Priority = (int)((ComboBoxItem)priority.SelectedItem).Tag,
+            TopicId = (long?)((ComboBoxItem?)topicBox.SelectedItem)?.Tag,
             Notes = notes.Text,
         }, tags.Text.Split([',', ' ', ';'], StringSplitOptions.RemoveEmptyEntries).ToList());
     }
