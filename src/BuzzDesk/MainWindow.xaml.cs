@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using BuzzDesk.Data;
 
 namespace BuzzDesk;
 
@@ -39,17 +40,143 @@ public partial class MainWindow : Window
         ContentRendered += (_, _) => Dispatcher.BeginInvoke(OfferGuide, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         Clock.Changed += () => { ShowZone(); current?.Refresh(); };
 
+        Db.Changed += what => ScheduleRefresh(what == "section");
+        App.Current.DayChanged += () => ScheduleRefresh(false);
+
         OnAppearance(appearance);
         RefreshShortcuts();
         ShowZone();
         SyncAiChip();
+        RebuildSections();
+        RefreshCounts();
         Navigate(Store.Settings.LastNav);
+    }
+
+    // ================================================================== data changes
+    bool refreshQueued, sectionsDirty;
+    /// <summary>Coalesces bursts of writes into one refresh of the visible view, the counts and the sidebar.</summary>
+    void ScheduleRefresh(bool sections)
+    {
+        sectionsDirty |= sections;
+        if (refreshQueued) return;
+        refreshQueued = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            refreshQueued = false;
+            current?.Refresh();
+            RefreshCounts();
+            if (sectionsDirty) { sectionsDirty = false; RebuildSections(); }
+            else UpdateSectionCounts();
+        }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    void RefreshCounts()
+    {
+        var (dueToday, overdue, open) = Tasks.Counts(Clock.Today);
+        NavTodayCount.Text = dueToday + overdue > 0 ? (dueToday + overdue).ToString() : "";
+        NavTodayCount.SetResourceReference(TextBlock.ForegroundProperty, overdue > 0 ? "ErrorInk" : "LineNumber");
+        NavTasksCount.Text = open > 0 ? open.ToString() : "";
+        DbStatus.Text = "buzzdesk.db · v" + Migrator.All.Count;
+    }
+
+    // ================================================================== areas and projects in the sidebar
+    readonly Dictionary<long, (RadioButton button, TextBlock count)> sectionNav = [];
+
+    void RebuildSections()
+    {
+        NavSectionsGroup.Children.Clear();
+        sectionNav.Clear();
+        var label = new TextBlock { Text = L.T("ÁREAS Y PROYECTOS") };
+        label.SetResourceReference(StyleProperty, "NavLabel");
+        NavSectionsGroup.Children.Add(label);
+        foreach (var s in Sections.All())
+        {
+            var count = new TextBlock { Text = s.OpenTasks > 0 ? s.OpenTasks.ToString() : "" };
+            count.SetResourceReference(StyleProperty, "NavCount");
+            DockPanel.SetDock(count, Dock.Right);
+            var glyph = new TextBlock { Text = s.IsArea ? "\uE8B7" : "\uE8F1" };
+            glyph.SetResourceReference(StyleProperty, "NavGlyph");
+            var name = new TextBlock { Text = s.Name, TextTrimming = TextTrimming.CharacterEllipsis };
+            var row = new DockPanel { Margin = new Thickness(s.IsArea ? 0 : 18, 0, 0, 0) };
+            row.Children.Add(count); row.Children.Add(glyph); row.Children.Add(name);
+            var button = new RadioButton { Content = row, GroupName = "Nav", Tag = "section:" + s.Id, ToolTip = s.Name };
+            button.SetResourceReference(StyleProperty, "NavItem");
+            button.Checked += NavChecked;
+            button.ContextMenu = SectionMenu(s);
+            NavSectionsGroup.Children.Add(button);
+            sectionNav[s.Id] = (button, count);
+        }
+        var add = new Button { Content = NavRow("\uE710", L.T("Nueva área")) };
+        add.SetResourceReference(StyleProperty, "NavAction");
+        add.Click += (_, _) => NewSection(null);
+        NavSectionsGroup.Children.Add(add);
+        SyncNavSelection();
+    }
+
+    void UpdateSectionCounts()
+    {
+        foreach (var s in Sections.All())
+            if (sectionNav.TryGetValue(s.Id, out var nav)) nav.count.Text = s.OpenTasks > 0 ? s.OpenTasks.ToString() : "";
+    }
+
+    static DockPanel NavRow(string glyph, string text)
+    {
+        var g = new TextBlock { Text = glyph };
+        g.SetResourceReference(StyleProperty, "NavGlyph");
+        var row = new DockPanel();
+        row.Children.Add(g); row.Children.Add(new TextBlock { Text = text });
+        return row;
+    }
+
+    ContextMenu SectionMenu(Section s)
+    {
+        var menu = new ContextMenu();
+        void Add(string header, Action click) { var m = new MenuItem { Header = header }; m.Click += (_, _) => click(); menu.Items.Add(m); }
+        if (s.IsArea) Add(L.T("Nuevo proyecto…"), () => NewSection(s.Id));
+        Add(L.T("Renombrar…"), () =>
+        {
+            if (PromptWindow.Ask(this, L.T("Renombrar"), L.T("Nuevo nombre:"), s.Name) is { } name && name.Trim().Length > 0) TrySection(() => Sections.Rename(s.Id, name));
+        });
+        Add(L.T("Archivar"), () =>
+        {
+            if (PromptWindow.Confirm(this, L.T("Archivar"), L.F("¿Archivar \"{0}\"? Sus pendientes se conservan.", s.Name), L.T("Archivar"), L.T("Cancelar")))
+                Sections.Archive(s.Id, true);
+        });
+        return menu;
+    }
+
+    public void NewSection(long? parentId)
+    {
+        string title = parentId == null ? L.T("Nueva área") : L.T("Nuevo proyecto");
+        if (PromptWindow.Ask(this, title, L.T("Nombre:"), "") is not { } name || name.Trim().Length == 0) return;
+        TrySection(() => Sections.Add(name, parentId));
+    }
+
+    void TrySection(Action work)
+    {
+        try { work(); }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 19)   // SQLITE_CONSTRAINT: the name exists
+        { PromptWindow.Info(this, L.T("Ya existe"), L.T("Ya hay un área o proyecto con ese nombre.")); }
+    }
+
+    /// <summary>Opens a task in Tasks (from Today, search or a reminder).</summary>
+    public void OpenTask(long id)
+    {
+        Navigate("tasks");
+        ((TasksView)views["tasks"]).Select(id);
+        SyncNavSelection();
+    }
+
+    void SyncNavSelection()
+    {
+        if (current is TasksView { SectionId: long sid } && sectionNav.TryGetValue(sid, out var nav)) { if (nav.button.IsChecked != true) nav.button.IsChecked = true; }
+        else if (current is TasksView && NavTasks.IsChecked != true) NavTasks.IsChecked = true;
     }
 
     // ================================================================== navigation
     DeskView CreateView(string key) => key switch
     {
-        "tasks" => new PlaceholderView("tasks", L.T("Pendientes")),
+        "tasks" => new TasksView(),
         "topics" => new PlaceholderView("topics", L.T("Temas")),
         "links" => new PlaceholderView("links", L.T("Enlaces")),
         _ => new TodayView(),
@@ -65,13 +192,23 @@ public partial class MainWindow : Window
         view.BuildToolbar(ViewToolbar);
         view.Shown();
         var nav = key switch { "tasks" => NavTasks, "topics" => NavTopics, "links" => NavLinks, "search" => NavSearch, _ => NavToday };
-        if (nav.IsChecked != true) nav.IsChecked = true;
+        if (view is TasksView { SectionId: long sid } && sectionNav.TryGetValue(sid, out var sn)) { if (sn.button.IsChecked != true) sn.button.IsChecked = true; }
+        else if (nav.IsChecked != true) nav.IsChecked = true;
         if (key != "search" && Store.Settings.LastNav != key) { Store.Settings.LastNav = key; Store.SaveSettings(); }
     }
 
     void NavChecked(object sender, RoutedEventArgs e)
     {
-        if (sender is RadioButton { Tag: string key } && current?.Key != key) Navigate(key);
+        if (sender is not RadioButton { Tag: string key }) return;
+        if (key.StartsWith("section:", StringComparison.Ordinal))
+        {
+            long id = long.Parse(key[8..]);
+            if (current is not TasksView) Navigate("tasks");
+            ((TasksView)views["tasks"]).SetSection(id);
+            return;
+        }
+        if (key == "tasks" && views.TryGetValue("tasks", out var tv) && tv is TasksView { SectionId: not null } tasks) { tasks.SetSection(null); if (current == tasks) return; }
+        if (current?.Id != key) Navigate(key);
     }
 
     void GoTodayClick(object sender, RoutedEventArgs e) => Navigate("today");
@@ -82,7 +219,16 @@ public partial class MainWindow : Window
     /// <summary>Reloads the visible view (data changed elsewhere: quick capture, a reminder, another view).</summary>
     public void RefreshAll() { current?.Refresh(); }
 
-    public void SetStatus(string text) => StatusText.Text = text;
+    Action? statusAction;
+    /// <summary>Footer message, optionally with an action button (Undo) that disappears with the next message.</summary>
+    public void SetStatus(string text, string? actionLabel = null, Action? action = null)
+    {
+        StatusText.Text = text;
+        statusAction = action;
+        StatusActionText.Text = actionLabel ?? "";
+        StatusAction.Visibility = action == null ? Visibility.Collapsed : Visibility.Visible;
+    }
+    void StatusActionClick(object sender, RoutedEventArgs e) { var a = statusAction; SetStatus(L.T("Listo")); a?.Invoke(); }
 
     void HideToTray()
     {
@@ -299,7 +445,17 @@ public partial class MainWindow : Window
     // ================================================================== commands
     void QuickCaptureClick(object sender, RoutedEventArgs e) => App.Current.QuickCapture();
     void ExitClick(object sender, RoutedEventArgs e) => App.Current.ExitApp();
-    void BackupNowClick(object sender, RoutedEventArgs e) { }
+    void BackupNowClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Backup.Result r;
+            using (var c = Db.Open()) r = Backup.Run(c, Db.BackupDir, "manual", Clock.Now);
+            SetStatus(L.F("Copia de seguridad verificada: {0} ({1:N0} KB)", System.IO.Path.GetFileName(r.Path), r.Bytes / 1024));
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or Microsoft.Data.Sqlite.SqliteException or UnauthorizedAccessException or System.IO.InvalidDataException)
+        { PromptWindow.Info(this, L.T("No se pudo hacer la copia de seguridad"), ex.Message); }
+    }
     void DataFolderClick(object sender, RoutedEventArgs e)
     {
         System.IO.Directory.CreateDirectory(DataFolder.Root);

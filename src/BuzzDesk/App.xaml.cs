@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using BuzzDesk.Data;
 using Microsoft.Win32;
 using WinForms = System.Windows.Forms;
 
@@ -51,6 +52,7 @@ public partial class App : Application
         var culture = L.Culture;
         System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
         Thread.CurrentThread.CurrentCulture = culture;
+        BuzzDesk.Domain.QuickParse.MonthFirst = !L.Es;
         BobertoMark.Current = MarkStyle.FromSettings(Store.Settings);
         LoadAppearance();
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler((sender, _) => Themes.ApplyChrome((Window)sender, Themes.Current)));
@@ -58,6 +60,9 @@ public partial class App : Application
 
         // Windows changed its time zone: "today" follows it when the app uses Windows' zone.
         SystemEvents.TimeChanged += (_, _) => Dispatcher.BeginInvoke(Clock.SystemZoneChanged);
+
+        if (!OpenDatabase()) { Shutdown(); return; }
+        StartDayWatch();
 
         if (Appearance.BobertoVisible) BobertoRuntime.Prewarm(BobertoRuntime.DefaultProfile);
 
@@ -79,6 +84,66 @@ public partial class App : Application
         hotkeys?.Dispose();
         try { mutex?.ReleaseMutex(); } catch (ApplicationException) { }
         base.OnExit(e);
+    }
+
+    // ------------------------------------------------------------------ database
+    /// <summary>Opens (creating or migrating) %LOCALAPPDATA%\BuzzDesk\buzzdesk.db. --shot uses a throwaway demo
+    /// database instead, never the person's data.</summary>
+    bool OpenDatabase()
+    {
+        string path = DataFolder.File("buzzdesk.db");
+        string backups = Store.Settings.BackupFolder.Length > 0 ? Store.Settings.BackupFolder : DataFolder.File("backups");
+        if (IsShot) { path = Path.Combine(ShotDir!, "demo", "buzzdesk.db"); backups = Path.Combine(ShotDir!, "demo", "backups"); if (File.Exists(path)) File.Delete(path); }
+        Db.Configure(path, backups);
+        try
+        {
+            Db.Initialize(c => Sections.SeedDefaults(c, L.T("Trabajo"), L.T("Personal")));
+            return true;
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or UnauthorizedAccessException or InvalidOperationException or InvalidDataException)
+        {
+            MessageBox.Show(L.T("No se pudo abrir la base de datos de BuzzDesk.") + "\n\n" + Db.Path + "\n\n" + ex.Message, AppInfo.Name, MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+    }
+
+    /// <summary>Raised when the day changes in the app's time zone (and when the zone changes).</summary>
+    public event Action? DayChanged;
+    DateOnly watchedDay;
+    System.Windows.Threading.DispatcherTimer? dayTimer;
+
+    /// <summary>Once a minute: a new day refreshes the views and takes the daily backup.</summary>
+    void StartDayWatch()
+    {
+        watchedDay = Clock.Today;
+        Clock.Changed += CheckDay;
+        dayTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+        dayTimer.Tick += (_, _) => CheckDay();
+        dayTimer.Start();
+        if (!IsShot) Dispatcher.BeginInvoke(DailyBackup, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
+    void CheckDay()
+    {
+        if (Clock.Today == watchedDay) return;
+        watchedDay = Clock.Today;
+        DayChanged?.Invoke();
+        if (!IsShot) DailyBackup();
+    }
+
+    /// <summary>Today's backup in the background (SQLite's online backup; the app keeps working).</summary>
+    void DailyBackup()
+    {
+        var st = Store.Settings;
+        var now = Clock.Now;
+        Task.Run(() =>
+        {
+            try { Backup.DailyIfDue(Db.BackupDir, st.BackupKeepDaily, st.BackupKeepWeekly, now); }
+            catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                Dispatcher.BeginInvoke(() => Toast(L.T("Copia de seguridad"), L.T("No se pudo hacer la copia de seguridad diaria: ") + ex.Message));
+            }
+        });
     }
 
     // ------------------------------------------------------------------ components

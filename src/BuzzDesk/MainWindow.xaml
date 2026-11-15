@@ -83,7 +83,10 @@
       <DockPanel>
         <StackPanel DockPanel.Dock="Top"><Border Height="1" Background="{DynamicResource AccentWeak}"/><Border Height="1" Margin="0,2,0,0" Background="{DynamicResource AccentRule}"/><Border Height="1" Margin="0,1,0,0" Background="{DynamicResource TopbarGlow}"/></StackPanel>
         <Grid Margin="16,6,14,7"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <TextBlock x:Name="StatusText" Text="{local:T 'Listo'}" Foreground="{DynamicResource Muted}" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+          <DockPanel>
+            <Button x:Name="StatusAction" DockPanel.Dock="Right" Style="{StaticResource StatusSegment}" Visibility="Collapsed" Click="StatusActionClick" HorizontalAlignment="Left"><TextBlock x:Name="StatusActionText" Foreground="{DynamicResource Accent}" FontWeight="SemiBold"/></Button>
+            <TextBlock x:Name="StatusText" Text="{local:T 'Listo'}" Foreground="{DynamicResource Muted}" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,10,0"/>
+          </DockPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
             <Button Style="{StaticResource StatusSegment}" Click="QuickCaptureClick" ToolTip="{local:T 'Captura rápida'}"><StackPanel Orientation="Horizontal"><TextBlock x:Name="StatusCaptureKey" Text="Ctrl+Alt+Space" Foreground="{DynamicResource Accent}" FontWeight="SemiBold" Margin="0,0,6,0"/><TextBlock Text="{local:T 'capturar'}" Foreground="{DynamicResource Muted}"/></StackPanel></Button>
             <Border BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="8,2,4,2"/>

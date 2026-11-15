@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Data and domain tests. They compile the app's Data/ and Domain/ sources (no WPF), so they run on any OS:
+       dotnet test tests/BuzzDesk.Tests -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>BuzzDesk.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/BuzzDesk/Data/**/*.cs" Link="App/Data/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../../src/BuzzDesk/Domain/**/*.cs" Link="App/Domain/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../src/BuzzDesk/Data/Migrations/*.sql" Link="Migrations/%(Filename)%(Extension)" LogicalName="BuzzDesk.Data.Migrations.%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+</Project>

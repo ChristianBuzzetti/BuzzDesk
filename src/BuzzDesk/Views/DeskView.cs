@@ -7,7 +7,7 @@ namespace BuzzDesk;
 /// actions and reloads from the database when data changes.</summary>
 public abstract class DeskView : Grid
 {
-    public abstract string Key { get; }
+    public abstract string Id { get; }
     /// <summary>Adds this view's actions to the main window's subbar.</summary>
     public virtual void BuildToolbar(Panel bar) { }
     /// <summary>Reloads from the database.</summary>

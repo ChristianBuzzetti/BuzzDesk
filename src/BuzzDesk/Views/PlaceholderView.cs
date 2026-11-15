@@ -7,7 +7,7 @@ namespace BuzzDesk;
 public sealed class PlaceholderView : DeskView
 {
     readonly string key;
-    public override string Key => key;
+    public override string Id => key;
     public PlaceholderView(string key, string title)
     {
         this.key = key;

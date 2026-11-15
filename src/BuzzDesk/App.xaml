@@ -192,6 +192,23 @@
     <Style x:Key="NavLabel" TargetType="TextBlock"><Setter Property="FontSize" Value="10"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="{DynamicResource LineNumber}"/><Setter Property="Margin" Value="12,16,0,6"/></Style>
     <Style x:Key="NavGlyph" TargetType="TextBlock"><Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/><Setter Property="FontSize" Value="14"/><Setter Property="Margin" Value="0,0,11,0"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
     <Style x:Key="NavCount" TargetType="TextBlock"><Setter Property="FontFamily" Value="{DynamicResource MonoFont}"/><Setter Property="FontSize" Value="10.5"/><Setter Property="FontWeight" Value="Normal"/><Setter Property="Foreground" Value="{DynamicResource LineNumber}"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+    <!-- BuzzDesk: round check to complete a task (accent fill and check mark when done). -->
+    <Style x:Key="TaskCheck" TargetType="CheckBox"><Setter Property="Cursor" Value="Hand"/><Setter Property="Focusable" Value="False"/><Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox"><Grid Width="20" Height="20" Background="Transparent">
+        <Ellipse x:Name="Ring" Stroke="{DynamicResource StrongBorder}" StrokeThickness="1.5" Fill="Transparent"/>
+        <TextBlock x:Name="Mark" Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource OnAccent}" Visibility="Collapsed"/></Grid>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource Accent}"/><Setter TargetName="Mark" Property="Visibility" Value="Visible"/><Setter TargetName="Mark" Property="Foreground" Value="{DynamicResource Accent}"/></Trigger>
+          <Trigger Property="IsChecked" Value="True"><Setter TargetName="Ring" Property="Fill" Value="{DynamicResource Accent}"/><Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource Accent}"/><Setter TargetName="Mark" Property="Visibility" Value="Visible"/><Setter TargetName="Mark" Property="Foreground" Value="{DynamicResource OnAccent}"/></Trigger>
+        </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+    <!-- BuzzDesk: segmented filter chip (a RadioButton): hairline when idle, accent tint when chosen. -->
+    <Style x:Key="SegmentChip" TargetType="RadioButton" BasedOn="{StaticResource UiControl}"><Setter Property="Foreground" Value="{DynamicResource Muted}"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Margin" Value="0,0,6,0"/><Setter Property="Height" Value="30"/><Setter Property="Padding" Value="12,0"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton"><Border x:Name="Frame" Background="Transparent" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1" CornerRadius="{DynamicResource ControlRadius}" Padding="{TemplateBinding Padding}"><ContentPresenter VerticalAlignment="Center"/></Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Frame" Property="Background" Value="{DynamicResource AlternateRow}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger>
+          <Trigger Property="IsChecked" Value="True"><Setter TargetName="Frame" Property="Background" Value="{DynamicResource AccentWeak}"/><Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource AccentCardRing}"/><Setter Property="Foreground" Value="{DynamicResource Accent}"/><Setter Property="FontWeight" Value="SemiBold"/></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource AccentRing}"/></Trigger>
+        </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
     <!-- Page title in the content header (DBMON h1: display face, semibold). -->
     <Style x:Key="PageTitle" TargetType="TextBlock"><Setter Property="FontSize" Value="{DynamicResource TitleFontSize}"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
 

@@ -34,7 +34,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1 -Zip     # also artifacts\B
 | Stage | |
 |---|---|
 | 1. Skeleton, appearance, Boberto, icon | done |
-| 2. SQLite, Today, Tasks | |
+| 2. SQLite, Today, Tasks | done |
 | 3. Reminders, tray | |
 | 4. Topics | |
 | 5. Links | |
