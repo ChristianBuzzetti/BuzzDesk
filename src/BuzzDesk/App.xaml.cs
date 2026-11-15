@@ -63,6 +63,7 @@ public partial class App : Application
         SystemEvents.TimeChanged += (_, _) => Dispatcher.BeginInvoke(Clock.SystemZoneChanged);
 
         if (!OpenDatabase()) { Shutdown(); return; }
+        Db.Changed += _ => Cloud.Dirty = true;
         StartDayWatch();
 
         if (Appearance.BobertoVisible) BobertoRuntime.Prewarm(BobertoRuntime.DefaultProfile);
@@ -189,6 +190,16 @@ public partial class App : Application
             {
                 Dispatcher.BeginInvoke(() => Toast(L.T("Copia de seguridad"), L.T("No se pudo hacer la copia de seguridad diaria: ") + ex.Message));
             }
+            // And once a day to the cloud folder, if one is chosen.
+            if (Cloud.Enabled && !Cloud.DoneToday)
+            {
+                var (ok, message) = Cloud.Upload();
+                Dispatcher.BeginInvoke(() =>
+                {
+                    main?.ShowCloud();
+                    if (!ok) Toast(L.T("Copia en la nube"), message, () => CloudUi.Configure(main));
+                });
+            }
         });
     }
 
@@ -211,7 +222,7 @@ public partial class App : Application
         await OfferWebView2Async();
     }
 
-    void Relaunch()
+    public void Relaunch()
     {
         try { Process.Start(new ProcessStartInfo(Environment.ProcessPath!, "--relaunch") { UseShellExecute = false }); }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return; }
@@ -375,6 +386,8 @@ public partial class App : Application
     {
         if (Exiting) return;
         Exiting = true;
+        // Changes since the last cloud copy: one more on the way out (a few seconds at most).
+        if (Cloud.Enabled && Cloud.Dirty && !IsShot) Cloud.Upload();
         foreach (Window w in Windows.Cast<Window>().ToArray()) w.Close();
         Shutdown();
     }

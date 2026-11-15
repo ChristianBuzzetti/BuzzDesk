@@ -31,6 +31,7 @@ static class Shots
             main.Show();
             main.Navigate("today");
             await Task.Delay(9000);   // Boberto's first paint
+            main.Navigate("today");    // refresh after the seed's last writes
             Save(main, Path.Combine(dir, "today.png"), log);
 
             main.Navigate("tasks");
@@ -47,6 +48,18 @@ static class Shots
             main.Navigate("links");
             await Task.Delay(1200);
             Save(main, Path.Combine(dir, "links.png"), log);
+
+            main.Navigate("habits");
+            await Task.Delay(1200);
+            Save(main, Path.Combine(dir, "habits.png"), log);
+
+            main.Navigate("bills");
+            await Task.Delay(1200);
+            Save(main, Path.Combine(dir, "bills.png"), log);
+
+            main.Navigate("lists");
+            await Task.Delay(1000);
+            Save(main, Path.Combine(dir, "lists.png"), log);
 
             main.ShotSearch(L.Es ? "indices" : "index");
             await Task.Delay(1200);
@@ -119,6 +132,40 @@ static class Shots
         Links.Add("https://status.example.com", S("Estado de servicios", "Service status"), tags: ["mon"]);
         Links.Opened(grafana); Links.Opened(grafana); Links.Opened(runbook);
         Links.Attach(topic, runbook);
+        // Personal: habits with some history, a list, bills, birthdays and a day plan.
+        long water = Habits.Add(S("Tomar agua", "Drink water"), target: 8);
+        long walk = Habits.Add(S("Caminar 30 min", "Walk 30 min"), weekdaysMask: 0b0011111);
+        long read = Habits.Add(S("Leer 20 min", "Read 20 min"));
+        var rnd = new Random(7);
+        for (int i = 1; i <= 80; i++)
+        {
+            var d = today.AddDays(-i);
+            if (rnd.NextDouble() < 0.85) for (int k = 0; k < 8 - (rnd.NextDouble() < 0.2 ? 3 : 0); k++) Habits.Mark(water, d);
+            if (d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday) && (i < 12 || rnd.NextDouble() < 0.7)) Habits.Mark(walk, d);
+            if (i < 9 || rnd.NextDouble() < 0.5) Habits.Mark(read, d);
+        }
+        for (int k = 0; k < 5; k++) Habits.Mark(water, today);
+        Habits.Mark(read, today);
+        long super = Checklists.Add(S("Súper", "Groceries"));
+        Checklists.AddItems(super, es ? ["Leche", "Pan", "Café", "Yerba", "Frutas", "Detergente"] : ["Milk", "Bread", "Coffee", "Tea", "Fruit", "Detergent"]);
+        Checklists.Toggle(Checklists.Items(super)[0].Id); Checklists.Toggle(Checklists.Items(super)[1].Id);
+        long trip = Checklists.Add(S("Valija", "Packing"));
+        Checklists.AddItems(trip, es ? ["Pasaporte", "Cargador", "Adaptador"] : ["Passport", "Charger", "Plug adapter"]);
+        string cur = es ? "ARS" : "USD";
+        long light = Bills.Add(new Bill { Name = S("Luz", "Electricity"), Category = S("Servicios", "Utilities"), AmountCents = es ? 2_850_000 : 9_500, Currency = cur, NextDue = today.AddDays(2), Recurrence = new RecurrenceRule(Freq.Monthly, 1, MonthDay: today.AddDays(2).Day) });
+        Bills.Add(new Bill { Name = S("Internet", "Internet"), Category = S("Servicios", "Utilities"), AmountCents = es ? 1_990_000 : 6_000, Currency = cur, NextDue = today.AddDays(9), Recurrence = new RecurrenceRule(Freq.Monthly, 1, MonthDay: today.AddDays(9).Day) });
+        Bills.Add(new Bill { Name = S("Tarjeta de crédito", "Credit card"), AmountCents = es ? 41_200_000 : 84_000, Currency = cur, NextDue = today.AddDays(-1), Recurrence = new RecurrenceRule(Freq.Monthly, 1, MonthDay: today.AddDays(-1).Day) });
+        Bills.Add(new Bill { Name = S("Streaming", "Streaming"), Category = S("Suscripciones", "Subscriptions"), AmountCents = 1_299, Currency = "USD", NextDue = today.AddDays(20), Recurrence = new RecurrenceRule(Freq.Monthly, 1, MonthDay: today.AddDays(20).Day) });
+        Bills.Add(new Bill { Name = S("Pasaporte", "Passport"), Kind = "renewal", Currency = cur, NextDue = today.AddMonths(5), Recurrence = Bills.Yearly(today.AddMonths(5)) });
+        long gas = Bills.Add(new Bill { Name = S("Gas", "Gas"), Category = S("Servicios", "Utilities"), AmountCents = es ? 1_250_000 : 4_000, Currency = cur, NextDue = today.AddDays(-4), Recurrence = new RecurrenceRule(Freq.Monthly, 1, MonthDay: today.AddDays(-4).Day) });
+        Bills.Pay(gas, null, today);
+        var bday = today.AddDays(3);
+        Dates.Add(S("Cumple de Ana", "Ana's birthday"), "birthday", bday.Month, bday.Day, 1991, "Ana");
+        var anniv = today.AddDays(12);
+        Dates.Add(S("Aniversario", "Anniversary"), "anniversary", anniv.Month, anniv.Day, 2015);
+        Dates.Add(S("Cumple de mamá", "Mom's birthday"), "birthday", 3, 22, 1962, S("Mamá", "Mom"));
+        var plan = Tasks.List(new TaskFilter(TaskScope.Today), today).Take(2).Select(t => t.Id).Append(close).ToList();
+        DayPlan.Set(today, plan);
         log.Add("seeded " + Tasks.Counts(today) + " tasks, " + Topics.Counts(today) + " topics, " + Links.Count() + " links");
     }
 

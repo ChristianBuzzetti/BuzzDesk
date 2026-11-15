@@ -56,6 +56,7 @@ public partial class MainWindow : Window
         SyncAiChip();
         RebuildSections();
         RefreshCounts();
+        ShowCloud();
         Navigate(Store.Settings.LastNav);
     }
 
@@ -495,6 +496,9 @@ public partial class MainWindow : Window
             case "ai": AiSettingsClick(this, new RoutedEventArgs()); break;
             case "folder": DataFolderClick(this, new RoutedEventArgs()); break;
             case "launcher": LauncherWindow.Toggle(); break;
+            case "habits": case "lists": case "bills": case "dates": Navigate(action); Activate(); break;
+            case "plan": Navigate("today"); Activate(); DayPlanUi.Pick(this); break;
+            case "cloud": CloudUi.Configure(this); break;
         }
     }
 
@@ -558,6 +562,18 @@ public partial class MainWindow : Window
         Navigate("topics");
         ((TopicsView)views["topics"]).Select(id);
     }
+    void CloudClick(object sender, RoutedEventArgs e) => CloudUi.Configure(this);
+    void CloudNowClick(object sender, RoutedEventArgs e) => CloudUi.UploadNow();
+    void RestoreClick(object sender, RoutedEventArgs e) => CloudUi.Restore(this);
+
+    /// <summary>Footer: where the cloud copies go and when the last one went.</summary>
+    public void ShowCloud()
+    {
+        CloudStatus.Text = Cloud.Status();
+        CloudStatus.SetResourceReference(TextBlock.ForegroundProperty, Store.Settings.CloudLastError.Length > 0 ? "ErrorInk" : Cloud.Enabled ? "Ink" : "Muted");
+        CloudStatus.ToolTip = Store.Settings.CloudLastError.Length > 0 ? Store.Settings.CloudLastError : Store.Settings.CloudFolder;
+    }
+
     void ComponentsClick(object sender, RoutedEventArgs e) => _ = App.Current.CheckComponentsAsync();
     void AboutClick(object sender, RoutedEventArgs e) => AboutWindow.Show(this);
     void LangEnClick(object sender, RoutedEventArgs e) => SetLanguage("en");

@@ -21,6 +21,13 @@ namespace BuzzDesk
         public string BackupFolder = "";                  // empty = LocalAppData\BuzzDesk\backups
         public string LastNav = "today";                  // today | tasks | topics | links
         public string QuickMode = "task";                 // quick capture: task | note | reminder | link
+        // Cloud backup: a folder synced by OneDrive / Google Drive / Dropbox… (empty = off). Passphrase apart (CloudKey).
+        public string CloudFolder = "";
+        public bool CloudEncrypt = true;
+        public int CloudKeepDaily = 30;
+        public int CloudKeepMonthly = 12;
+        public string CloudLastUtc = "";
+        public string CloudLastError = "";
         public string DefaultCurrency = "";               // ISO 4217 for new bills; empty = Windows' region currency
         public long QuickListId = 0;                      // quick capture: last list used
         public long QuickSectionId = 0;                   // quick capture: last area or project for tasks (0 = none)

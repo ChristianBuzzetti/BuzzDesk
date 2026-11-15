@@ -578,3 +578,69 @@ public class PersonalTests : IDisposable
         Assert.Empty(DayPlan.Get(Today.AddDays(1)));
     }
 }
+
+[Collection("db")]
+public class CloudBackupTests : IDisposable
+{
+    readonly TempDb db = new();
+    string Cloud => Path.Combine(db.Dir, "OneDrive", "BuzzDesk Backups");
+    public void Dispose() => db.Dispose();
+
+    [Fact]
+    public void Encrypted_roundtrip_wrong_passphrase_and_restore()
+    {
+        var today = new DateOnly(2026, 11, 15);
+        Tasks.Add(new Tasks.Draft("Antes del backup"), today);
+        Habits.Add("Leer");
+        CloudBackup.Result r;
+        using (var c = Db.Open()) r = CloudBackup.Run(c, Cloud, "correct horse battery", new DateTime(2026, 11, 15, 22, 0, 0));
+        Assert.True(r.Encrypted);
+        Assert.EndsWith(".bzdk", r.Path);
+        var raw = File.ReadAllBytes(r.Path);
+        Assert.DoesNotContain("SQLite format 3", System.Text.Encoding.ASCII.GetString(raw));        // nothing readable
+        Assert.ThrowsAny<System.Security.Cryptography.CryptographicException>(() => CloudBackup.Inspect(r.Path, "wrong"));
+        Assert.Empty(Directory.GetFiles(Cloud, ".*partial"));
+
+        // Change data, then restore the copy.
+        Tasks.Add(new Tasks.Draft("Después del backup"), today);
+        var copy = CloudBackup.Inspect(r.Path, "correct horse battery");
+        Assert.Equal(Migrator.All.Count, copy.SchemaVersion);
+        Assert.Equal((1, 1), (copy.Tasks, copy.Habits));
+        CloudBackup.Apply(copy, db.BackupDir);
+        Assert.Equal(["Antes del backup"], Tasks.List(new TaskFilter(TaskScope.All), today).Select(t => t.Title));
+        Assert.Single(Directory.GetFiles(db.BackupDir, "*-pre-restore.db"));
+        using var c2 = Db.Open();
+        Assert.Equal("ok", Db.Scalar<string>(c2, "PRAGMA integrity_check;"));
+        Assert.Contains(Search.Run("antes"), h => h.Kind == "task");
+    }
+
+    [Fact]
+    public void Plain_copy_and_a_foreign_file_is_refused()
+    {
+        CloudBackup.Result r;
+        using (var c = Db.Open()) r = CloudBackup.Run(c, Cloud, null, new DateTime(2026, 11, 15, 8, 0, 0));
+        Assert.EndsWith(".db", r.Path);
+        Assert.Equal(Migrator.All.Count, CloudBackup.Inspect(r.Path, null).SchemaVersion);
+        string other = Path.Combine(db.Dir, "other.db");
+        using (var o = new SqliteConnection("Data Source=" + other + ";Pooling=False")) { o.Open(); Db.Exec(o, "CREATE TABLE x(a)"); }
+        Assert.Throws<InvalidDataException>(() => CloudBackup.Inspect(other, null));
+    }
+
+    [Fact]
+    public void Retention_keeps_daily_and_monthly()
+    {
+        Directory.CreateDirectory(Cloud);
+        var start = new DateTime(2026, 1, 1, 9, 0, 0);
+        for (int i = 0; i < 320; i++)
+            foreach (int h in new[] { 9, 21 })
+                File.WriteAllBytes(Path.Combine(Cloud, CloudBackup.Prefix + start.AddDays(i).Date.AddHours(h).ToString("yyyyMMdd-HHmmss") + ".bzdk"), [1]);
+        CloudBackup.Prune(Cloud, 30, 12);
+        var left = CloudBackup.List(Cloud);
+        var recent = left.Where(x => x.when >= start.AddDays(290)).ToList();
+        Assert.Equal(30, recent.Select(x => x.when.Date).Distinct().Count());                // last 30 days
+        Assert.All(recent.GroupBy(x => x.when.Date), g => Assert.Contains(g, x => x.when.Hour == 21));   // the newest of each day
+        Assert.All(recent.Where(x => x.when.Hour == 9), x => Assert.Equal(1, x.when.Day));   // a 9:00 copy only as a month's first
+        Assert.Contains(left, x => x.when == new DateTime(2026, 3, 1, 9, 0, 0));             // oldest of March
+        Assert.True(left.Count <= 30 + 12);
+    }
+}

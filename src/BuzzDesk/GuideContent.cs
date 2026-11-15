@@ -24,8 +24,8 @@ public static class GuideContent
         var list = new List<GuideTopic>
         {
             new("start", "", S("Primeros pasos", "Getting started"),
-                S("BuzzDesk ordena tu día de trabajo y lo personal: pendientes, recordatorios, temas en seguimiento y enlaces útiles, todo en tu PC. Vive en la bandeja del sistema, así que te avisa aunque cierres la ventana.",
-                  "BuzzDesk organizes your work day and personal life: tasks, reminders, topics you follow up and useful links, all on your PC. It lives in the system tray, so it reminds you even when the window is closed."),
+                S("BuzzDesk ordena tu día de trabajo y lo personal: pendientes, recordatorios, hábitos, listas, pagos, fechas importantes, temas en seguimiento y enlaces útiles, todo en tu PC. Vive en la bandeja del sistema, así que te avisa aunque cierres la ventana.",
+                  "BuzzDesk organizes your work day and personal life: tasks, reminders, habits, lists, bills, important dates, topics you follow up and useful links, all on your PC. It lives in the system tray, so it reminds you even when the window is closed."),
                 [
                     Steps(S("EN UN MINUTO", "IN ONE MINUTE"),
                         S($"Tocá {quick} desde cualquier programa y escribí lo que tenés que hacer. Enter y listo.", $"Press {quick} from any app and type what you need to do. Enter and done."),
@@ -111,6 +111,59 @@ public static class GuideContent
                 ],
                 [(S("Ir a Enlaces", "Go to Links"), "links"), (S("Abrir el lanzador", "Open the launcher"), "launcher")]),
 
+            new("plan", "\uE7C1", S("Plan del día", "Day plan"),
+                S("Elegí las 3 cosas que harían que hoy sea un buen día.", "Pick the 3 things that would make today a good day."),
+                [
+                    Steps(S("CÓMO SE USA", "HOW TO USE IT"),
+                        S("En Hoy, tocá \"Planificar mi día\".", "In Today, press \"Plan my day\"."),
+                        S("Marcá hasta 3 pendientes; el orden en que los marcás es su orden.", "Tick up to 3 tasks; the order you tick them is their order."),
+                        S("Quedan arriba de todo en Hoy. Desde las 18 h ves el resumen del día.", "They lead Today. From 6 pm you see how the day went.")),
+                ],
+                [(S("Planificar mi día", "Plan my day"), "plan")]),
+
+            new("habits", "\uE9D9", S("Hábitos", "Habits"),
+                S("Lo que querés hacer seguido: tomar agua, caminar, leer. Un toque por día y la racha crece.", "What you want to do often: drink water, walk, read. One touch a day and the streak grows."),
+                [
+                    Tips(S("BUENO SABER", "GOOD TO KNOW"),
+                        S("Meta diaria: \"8 vasos\" se marca de a uno; clic derecho resta.", "Daily target: \"8 glasses\" is checked one at a time; right click takes one off."),
+                        S("Elegí los días en que aplica: los días libres no cortan la racha.", "Choose the days it applies: days off don't break the streak."),
+                        S("El mapa muestra las últimas 12 semanas. Los de hoy también están en Hoy.", "The map shows the last 12 weeks. Today's are also in Today.")),
+                ],
+                [(S("Ir a Hábitos", "Go to Habits"), "habits")]),
+
+            new("lists", "\uE762", S("Listas", "Lists"),
+                S("Súper, valija, regalos: listas para tildar que se reutilizan.", "Groceries, packing, gifts: lists to tick off that you can reuse."),
+                [
+                    Tips(S("BUENO SABER", "GOOD TO KNOW"),
+                        S("Agregá varias cosas de una, separadas por coma: leche, pan, café.", "Add several at once, separated by commas: milk, bread, coffee."),
+                        S("\"Usar de nuevo\" destilda todo; \"Quitar tildados\" limpia la lista.", "\"Use again\" unticks everything; \"Remove ticked\" clears the list."),
+                        S($"Desde la captura rápida ({quick}), modo Lista (Ctrl+5).", $"From quick capture ({quick}), List mode (Ctrl+5).")),
+                ],
+                [(S("Ir a Listas", "Go to Lists"), "lists")]),
+
+            new("bills", "\uE8C7", S("Pagos y vencimientos", "Bills and renewals"),
+                S("Servicios, tarjeta, seguro, impuestos y renovaciones (DNI, pasaporte, VTV): BuzzDesk avisa antes y lleva la cuenta.", "Utilities, credit card, insurance, taxes and renewals (ID, passport, car inspection): BuzzDesk lets you know before and keeps track."),
+                [
+                    Steps(S("CÓMO SE USA", "HOW TO USE IT"),
+                        S("Nuevo vencimiento: nombre, monto (opcional) y moneda, próxima fecha, cada cuánto se repite y cuántos días antes avisar.", "New bill: name, amount (optional) and currency, next date, how often it repeats and how many days before to notify."),
+                        S("Cuando pagás, \"Pagado\": queda registrado y pasa al próximo vencimiento. Se puede deshacer.", "When you pay, \"Paid\": it's recorded and moves to the next due date. It can be undone."),
+                        S("Arriba ves lo pagado y lo que falta pagar en el mes, por moneda.", "At the top you see what was paid and what's left this month, by currency.")),
+                    Tips(S("BUENO SABER", "GOOD TO KNOW"),
+                        S("La moneda por defecto se elige en la barra; arranca con la de tu región de Windows.", "The default currency is chosen in the toolbar; it starts with your Windows region's."),
+                        S("Clic derecho: pagado con otro monto, historial de pagos, archivar.", "Right click: paid a different amount, payment history, archive.")),
+                ],
+                [(S("Ir a Pagos", "Go to Bills"), "bills")]),
+
+            new("dates", "\uE7BF", S("Fechas importantes", "Important dates"),
+                S("Cumpleaños, aniversarios y fechas que se repiten cada año, con aviso unos días antes.", "Birthdays, anniversaries and yearly dates, with a notice a few days before."),
+                [
+                    Tips(S("BUENO SABER", "GOOD TO KNOW"),
+                        S("Si ponés el año, BuzzDesk te dice cuántos cumple.", "If you add the year, BuzzDesk tells you how old they turn."),
+                        S("Las de los próximos 7 días aparecen en Hoy.", "Those in the next 7 days show up in Today."),
+                        S("Un 29 de febrero se recuerda el 28 en los años que no son bisiestos.", "A February 29 is remembered on the 28th in common years.")),
+                ],
+                [(S("Ir a Fechas", "Go to Dates"), "dates")]),
+
             new("quick", "", S("Captura rápida", "Quick capture"),
                 S("Una ventanita junto al cursor para anotar algo en dos segundos, sin dejar lo que estás haciendo.", "A small window next to the cursor to jot something down in two seconds, without leaving what you're doing."),
                 [
@@ -148,6 +201,7 @@ public static class GuideContent
                     Keys(S("GLOBALES", "GLOBAL"), (quick, S("Captura rápida", "Quick capture")), (launcher, S("Lanzador de enlaces", "Link launcher"))),
                     Keys(S("EN LA VENTANA", "IN THE WINDOW"),
                         ("Ctrl+1 … Ctrl+4", S("Hoy, Pendientes, Temas, Enlaces", "Today, Tasks, Topics, Links")),
+                        ("Ctrl+1 … Ctrl+5", S("En la captura rápida: pendiente, nota, recordatorio, enlace, lista", "In quick capture: task, note, reminder, link, list")),
                         ("Ctrl+N", S("Nuevo en la vista actual", "New in the current view")),
                         ("Ctrl+F", S("Buscar en todo", "Search everything")),
                         ("Ctrl+L", S("Lanzador de enlaces", "Link launcher")),
@@ -164,11 +218,15 @@ public static class GuideContent
                         S("Copias: %LOCALAPPDATA%\\BuzzDesk\\backups, una por día (14 días) y una por semana (8 semanas), más una antes de cada actualización del esquema.", "Backups: %LOCALAPPDATA%\\BuzzDesk\\backups, one per day (14 days) and one per week (8 weeks), plus one before each schema update."),
                         S("Para quien administra bases: SQLite en modo WAL, esquema versionado (tabla schema_version), tablas STRICT con claves foráneas, fechas en UTC y búsqueda FTS5.", "For DBAs: SQLite in WAL mode, a versioned schema (schema_version table), STRICT tables with foreign keys, dates in UTC and FTS5 search."),
                         S("Archivo → Hacer una copia de seguridad ahora, cuando quieras.", "File → Back up now, whenever you want.")),
+                    Tips(S("COPIA EN LA NUBE", "CLOUD BACKUP"),
+                        S("Archivo → Copia en la nube: elegí OneDrive, Google Drive, Dropbox, iCloud u otra carpeta. BuzzDesk sube una copia verificada por día y al salir si hubo cambios.", "File → Cloud backup: choose OneDrive, Google Drive, Dropbox, iCloud or another folder. BuzzDesk uploads a verified copy once a day and on exit if anything changed."),
+                        S("Con cifrado (recomendado), la copia no se puede leer sin tu frase. Guardala bien: sin ella no hay forma de abrirla.", "With encryption (recommended), the copy can't be read without your passphrase. Keep it safe: without it there's no way to open it."),
+                        S("Nunca se sincroniza la base en uso: solo copias, así el servicio de nube no la puede dañar.", "The live database is never synced: only copies, so the cloud service can't damage it.")),
                     Tips(S("PARA RESTAURAR", "TO RESTORE"),
-                        S("Salí de BuzzDesk, copiá la copia que quieras sobre buzzdesk.db y volvé a abrir.", "Exit BuzzDesk, copy the backup you want over buzzdesk.db and open it again."),
+                        S("Archivo → Restaurar desde una copia: elegí una copia local o de la nube; BuzzDesk la verifica, guarda lo actual por las dudas y se reinicia.", "File → Restore from a backup: pick a local or cloud copy; BuzzDesk checks it, saves the current data just in case and restarts."),
                         S("Cada copia se verifica (quick_check) al crearse.", "Each backup is verified (quick_check) when created.")),
                 ],
-                [(S("Abrir la carpeta de datos", "Open the data folder"), "folder")]),
+                [(S("Copia en la nube", "Cloud backup"), "cloud"), (S("Abrir la carpeta de datos", "Open the data folder"), "folder")]),
 
             new("ai", "", S("Inteligencia artificial", "Artificial intelligence"),
                 S("Conectá el servicio de IA que prefieras (Claude, Gemini, ChatGPT, OpenRouter, Ollama local u otro) para las funciones de IA que lleguen a BuzzDesk (resúmenes del día y de la semana, en preparación). Viene apagada: nada se envía hasta que la configures y la actives.",

@@ -16,6 +16,9 @@
                   <MenuItem x:Name="MenuQuickCapture" Header="{local:T 'Captura rápida'}" Click="QuickCaptureClick"/>
                   <Separator/>
                   <MenuItem Header="{local:T 'Hacer una copia de seguridad ahora'}" Click="BackupNowClick"/>
+                  <MenuItem Header="{local:T 'Copia en la nube…'}" Click="CloudClick"/>
+                  <MenuItem Header="{local:T 'Subir copia a la nube ahora'}" Click="CloudNowClick"/>
+                  <MenuItem Header="{local:T 'Restaurar desde una copia…'}" Click="RestoreClick"/>
                   <MenuItem Header="{local:T 'Abrir la carpeta de datos'}" Click="DataFolderClick"/>
                   <Separator/>
                   <MenuItem Header="{local:T 'Salir'}" Click="ExitClick"/>
@@ -91,6 +94,8 @@
             <Button Style="{StaticResource StatusSegment}" Click="QuickCaptureClick" ToolTip="{local:T 'Captura rápida'}"><StackPanel Orientation="Horizontal"><TextBlock x:Name="StatusCaptureKey" Text="Ctrl+Alt+Space" Foreground="{DynamicResource Accent}" FontWeight="SemiBold" Margin="0,0,6,0"/><TextBlock Text="{local:T 'capturar'}" Foreground="{DynamicResource Muted}"/></StackPanel></Button>
             <Border BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="8,2,4,2"/>
             <Button Style="{StaticResource StatusSegment}" Click="ZoneStatusClick" ToolTip="{local:T 'Zona horaria'}"><StackPanel Orientation="Horizontal"><TextBlock Text="TZ" Foreground="{DynamicResource Muted}" Margin="0,0,6,0"/><TextBlock x:Name="ZoneStatus" Foreground="{DynamicResource Ink}" FontWeight="SemiBold"/></StackPanel></Button>
+            <Border BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="8,2,4,2"/>
+            <Button Style="{StaticResource StatusSegment}" Click="CloudClick" ToolTip="{local:T 'Copia en la nube'}"><StackPanel Orientation="Horizontal"><TextBlock Text="☁" Foreground="{DynamicResource Muted}" Margin="0,0,6,0"/><TextBlock x:Name="CloudStatus" Foreground="{DynamicResource Ink}" FontWeight="SemiBold"/></StackPanel></Button>
             <Border BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="8,2,4,2"/>
             <Button Style="{StaticResource StatusSegment}" Click="DataFolderClick" ToolTip="{local:T 'Base de datos y copias de seguridad'}"><StackPanel Orientation="Horizontal"><TextBlock Text="DB" Foreground="{DynamicResource Muted}" Margin="0,0,6,0"/><TextBlock x:Name="DbStatus" Foreground="{DynamicResource Accent}" FontWeight="SemiBold"/></StackPanel></Button>
           </StackPanel>
