@@ -105,7 +105,7 @@ static class Shots
         long t2 = Topics.Add(S("Lentitud en reportes de ventas", "Slow sales reports"), work, today.AddDays(2), ["perf"]);
         Topics.AddNote(t2, S("El plan cambió después del último deploy: parameter sniffing.", "The plan changed after the last deploy: parameter sniffing."));
         long t3 = Topics.Add(S("Licencias para el ambiente de DR", "Licenses for the DR environment"), work, today.AddDays(-1));
-        Topics.SetStatus(t3, TopicState.Waiting, "Compras", S("Esperando a Compras", "Waiting on Purchasing"));
+        Topics.SetStatus(t3, TopicState.Waiting, S("Compras", "Purchasing"), S("Esperando a Compras", "Waiting on Purchasing"));
         Topics.Add(S("Mudanza de oficina", "Office move"), personal, today.AddDays(10));
 
         Reminders.Add(Clock.ToUtc(today, new TimeOnly(Math.Min(22, Clock.Now.Hour + 1), 30)), title: S("Daily del equipo", "Team daily"));

@@ -12,7 +12,7 @@ public sealed class TasksView : DeskView
     public override string Id => "tasks";
     readonly TextBlock heading = Ui.Title(L.T("Pendientes"));
     readonly TextBlock subheading = Ui.Text("", "Muted", 12, mono: true);
-    readonly StackPanel scopes = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 10) };
+    readonly WrapPanel scopes = new() { Margin = new Thickness(0, 10, 0, 4) };
     readonly TextBox add = new() { Padding = new Thickness(10, 8, 10, 8) };
     readonly ListBox list = new() { BorderThickness = new Thickness(0), Background = System.Windows.Media.Brushes.Transparent, HorizontalContentAlignment = HorizontalAlignment.Stretch };
     readonly TaskEditor editor = new();

@@ -10,7 +10,7 @@ public sealed class TopicsView : DeskView
 {
     public override string Id => "topics";
     readonly TextBlock subheading = Ui.Text("", "Muted", 12, mono: true);
-    readonly StackPanel scopes = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 10) };
+    readonly WrapPanel scopes = new() { Margin = new Thickness(0, 10, 0, 4) };
     readonly TextBox add = new() { Padding = new Thickness(10, 8, 10, 8) };
     readonly ListBox list = new() { BorderThickness = new Thickness(0), Background = System.Windows.Media.Brushes.Transparent, HorizontalContentAlignment = HorizontalAlignment.Stretch };
     readonly TopicEditor editor = new();
@@ -29,15 +29,14 @@ public sealed class TopicsView : DeskView
         subheading.Margin = new Thickness(12, 6, 0, 0);
         titleRow.Children.Add(subheading);
         head.Children.Add(titleRow);
-        var scroll = new ScrollViewer { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = scopes };
-        foreach (var (label, s) in new[] { (L.T("Abiertos"), TopicScope.Open), (L.T("Para revisar"), TopicScope.Review), (L.T("Esperando"), TopicScope.Waiting), (L.T("En pausa"), TopicScope.Paused), (L.T("Cerrados"), TopicScope.Closed) })
+                foreach (var (label, s) in new[] { (L.T("Abiertos"), TopicScope.Open), (L.T("Para revisar"), TopicScope.Review), (L.T("Esperando"), TopicScope.Waiting), (L.T("En pausa"), TopicScope.Paused), (L.T("Cerrados"), TopicScope.Closed) })
         {
             var chip = new RadioButton { Content = label, GroupName = "TopicScope", IsChecked = s == scope, Tag = s };
             chip.SetResourceReference(StyleProperty, "SegmentChip");
             chip.Checked += (_, _) => { scope = (TopicScope)chip.Tag; Refresh(); };
             scopes.Children.Add(chip);
         }
-        head.Children.Add(scroll);
+        head.Children.Add(scopes);
         add.KeyDown += AddKeyDown;
         head.Children.Add(TaskEditor.Placeholder(add, L.T("Nuevo tema…  (Enter)")));
         DockPanel.SetDock(head, Dock.Top);

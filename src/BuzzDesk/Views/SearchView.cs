@@ -65,13 +65,24 @@ public sealed class SearchView : DeskView
         grid.Children.Add(glyph);
         var text = new StackPanel { Margin = new Thickness(0, 6, 8, 6), VerticalAlignment = VerticalAlignment.Center };
         string title = h.Title.Length > 0 ? h.Title : h.Kind == "note" ? L.T("Nota suelta") : "";
-        if (title.Length > 0)
+        string plain = h.Snippet.Replace(Search.MarkStart.ToString(), "").Replace(Search.MarkEnd.ToString(), "");
+        if (plain == title)
         {
-            var t = Ui.Text(title, "Ink", weight: FontWeights.SemiBold);
-            t.TextWrapping = TextWrapping.NoWrap; t.TextTrimming = TextTrimming.CharacterEllipsis;
+            // The match is in the title itself: show the title once, highlighted.
+            var t = Highlighted(h.Snippet);
+            t.FontSize = 13.5; t.FontWeight = FontWeights.SemiBold; t.SetResourceReference(TextBlock.ForegroundProperty, "Ink");
             text.Children.Add(t);
         }
-        text.Children.Add(Highlighted(h.Snippet));
+        else
+        {
+            if (title.Length > 0)
+            {
+                var t = Ui.Text(title, "Ink", weight: FontWeights.SemiBold);
+                t.TextWrapping = TextWrapping.NoWrap; t.TextTrimming = TextTrimming.CharacterEllipsis;
+                text.Children.Add(t);
+            }
+            text.Children.Add(Highlighted(h.Snippet));
+        }
         Grid.SetColumn(text, 1);
         grid.Children.Add(text);
         return grid;
@@ -80,7 +91,7 @@ public sealed class SearchView : DeskView
     /// <summary>The snippet with the matched words in the accent color.</summary>
     public static TextBlock Highlighted(string snippet)
     {
-        var tb = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12.5, Margin = new Thickness(0, 2, 0, 0) };
+        var tb = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12.5, Margin = new Thickness(0, 2, 0, 0), FontWeight = FontWeights.Normal };
         tb.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
         var parts = snippet.Replace('\n', ' ').Split(Search.MarkStart);
         tb.Inlines.Add(new Run(parts[0]));
