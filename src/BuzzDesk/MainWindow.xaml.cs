@@ -384,10 +384,14 @@ public partial class MainWindow : Window
     public void RefreshShortcuts()
     {
         string key = App.Current.CaptureHotkeyText.Length > 0 ? App.Current.CaptureHotkeyText : Store.Settings.HotkeyCapture;
+        key = KeyName(key);
         StatusCaptureKey.Text = key;
         CaptureKeyHint.Text = key.Replace('+', ' ');
         MenuQuickCapture.InputGestureText = key;
     }
+
+    /// <summary>"Ctrl+Alt+Space" as people read it in the app's language.</summary>
+    public static string KeyName(string spec) => L.Es ? spec.Replace("Space", "Espacio") : spec;
 
     void ShowZone()
     {

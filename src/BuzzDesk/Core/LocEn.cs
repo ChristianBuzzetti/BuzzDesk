@@ -740,5 +740,7 @@ static class LocEn
         ["Pegalos donde quieras (mail, chat). No incluyen tus pendientes, notas ni enlaces."] = "Paste it anywhere (mail, chat). It doesn't include your tasks, notes or links.",
         ["Probar una notificación"] = "Test a notification",
         ["Si no aparece, revisá Configuración → Sistema → Notificaciones → BuzzDesk, y el modo No molestar."] = "If it doesn't show, check Settings → System → Notifications → BuzzDesk, and Do not disturb.",
+        // ---- BuzzDesk sidebar
+        ["Pagos"] = "Bills",
     };
 }
