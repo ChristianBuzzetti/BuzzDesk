@@ -575,6 +575,34 @@ public partial class MainWindow : Window
     }
 
     void LogClick(object sender, RoutedEventArgs e) => App.OpenLog();
+
+    void SupportClick(object sender, RoutedEventArgs e)
+    {
+        string info = App.Current.SupportInfo();
+        try { Clipboard.SetText(info); } catch (System.Runtime.InteropServices.COMException) { }
+        PromptWindow.Info(this, L.T("Datos para soporte copiados"), L.T("Pegalos donde quieras (mail, chat). No incluyen tus pendientes, notas ni enlaces.") + "\n\n" + info.Replace("  ", " "));
+    }
+
+    void ExportClick(object sender, RoutedEventArgs e)
+    {
+        using var dlg = new System.Windows.Forms.FolderBrowserDialog { Description = L.T("Elegí dónde guardar los archivos CSV"), UseDescriptionForTitle = true,
+            SelectedPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) };
+        if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+        string folder = System.IO.Path.Combine(dlg.SelectedPath, "BuzzDesk " + Clock.Now.ToString("yyyy-MM-dd HHmm"));
+        var culture = App.WindowsCulture;
+        string list = culture.TextInfo.ListSeparator;
+        try
+        {
+            var files = Export.All(folder, new Export.Options(list.Length == 1 ? list[0] : ',', Clock.ToLocal, culture.NumberFormat.NumberDecimalSeparator));
+            SetStatus(L.F("Exportados {0} archivos en {1}", files.Count, folder));
+            Process.Start("explorer.exe", "\"" + folder + "\"");
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            Log.Error("export", ex);
+            PromptWindow.Info(this, L.T("No se pudo exportar"), ex.Message);
+        }
+    }
     void OptionsClick(object sender, RoutedEventArgs e) => OptionsUi.Show(this);
     void ComponentsClick(object sender, RoutedEventArgs e) => _ = App.Current.CheckComponentsAsync();
     void AboutClick(object sender, RoutedEventArgs e) => AboutWindow.Show(this);

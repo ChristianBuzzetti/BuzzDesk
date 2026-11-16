@@ -169,6 +169,19 @@ public static class Tasks
         return nextId;
     });
 
+    /// <summary>Undo of "complete": back to open and, for a recurring task, the instance the completion created goes
+    /// (with its subtasks; its reminders are dismissed ones' copies, removed by the cascade) and the old reminders
+    /// come back.</summary>
+    public static void UndoComplete(long id, long? createdNext) => Repo.Write("task", (c, _) =>
+    {
+        Db.Exec(c, "UPDATE task SET status = 'open', completed_utc = NULL, updated_utc = $now WHERE id = $id", ("$now", Db.NowUtc()), ("$id", id));
+        if (createdNext is long next)
+        {
+            Db.Exec(c, "DELETE FROM task WHERE id = $n AND status = 'open'", ("$n", next));
+            Db.Exec(c, "UPDATE reminder SET dismissed_utc = NULL WHERE task_id = $id AND fired_utc IS NULL", ("$id", id));
+        }
+    });
+
     /// <summary>Back to open (undo a completion). The next instance a recurring completion created is left alone.</summary>
     public static void Reopen(long id) => Repo.Write("task", (c, _) =>
         Db.Exec(c, "UPDATE task SET status = 'open', completed_utc = NULL, updated_utc = $now WHERE id = $id", ("$now", Db.NowUtc()), ("$id", id)));

@@ -107,9 +107,8 @@ public static class Actions
     {
         long? next = Tasks.Complete(t.Id, Clock.Today);
         var main = App.Current.Desk;
-        if (next is long id && Tasks.Get(id)?.DueDate is DateOnly d)
-            main?.SetStatus(L.F("Hecho: {0}. Próximo: {1}", t.Title, Fmt.Day(d, Clock.Today)));
-        else main?.SetStatus(L.F("Hecho: {0}", t.Title));
+        string text = next is long id && Tasks.Get(id)?.DueDate is DateOnly d ? L.F("Hecho: {0}. Próximo: {1}", t.Title, Fmt.Day(d, Clock.Today)) : L.F("Hecho: {0}", t.Title);
+        main?.SetStatus(text, L.T("Deshacer"), () => Tasks.UndoComplete(t.Id, next));
     }
 
     public static void Reopen(TaskItem t) => Tasks.Reopen(t.Id);

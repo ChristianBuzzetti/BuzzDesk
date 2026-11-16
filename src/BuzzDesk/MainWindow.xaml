@@ -19,6 +19,8 @@
                   <MenuItem Header="{local:T 'Copia en la nube…'}" Click="CloudClick"/>
                   <MenuItem Header="{local:T 'Subir copia a la nube ahora'}" Click="CloudNowClick"/>
                   <MenuItem Header="{local:T 'Restaurar desde una copia…'}" Click="RestoreClick"/>
+                  <Separator/>
+                  <MenuItem Header="{local:T 'Exportar todo a CSV (Excel)…'}" Click="ExportClick"/>
                   <MenuItem Header="{local:T 'Abrir la carpeta de datos'}" Click="DataFolderClick"/>
                   <Separator/>
                   <MenuItem Header="{local:T 'Salir'}" Click="ExitClick"/>
@@ -45,7 +47,7 @@
                   <MenuItem x:Name="StartupMenu" Header="{local:T 'Iniciar con Windows'}" IsCheckable="True" Click="StartupClick"/>
                 </MenuItem>
                 <MenuItem x:Name="MenuAi" Header="{local:T 'IA'}" Tag="&#xEA80;"><MenuItem Header="{local:T 'Configurar IA…'}" Click="AiSettingsClick"/></MenuItem>
-                <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Guía de BuzzDesk'}" InputGestureText="F1" Click="GuideClick"/><Separator/><MenuItem Header="{local:T 'Revisar componentes…'}" Click="ComponentsClick"/><MenuItem Header="{local:T 'Abrir el registro'}" Click="LogClick"/><MenuItem Header="{local:T 'Acerca de BuzzDesk'}" Click="AboutClick"/></MenuItem>
+                <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Guía de BuzzDesk'}" InputGestureText="F1" Click="GuideClick"/><Separator/><MenuItem Header="{local:T 'Revisar componentes…'}" Click="ComponentsClick"/><MenuItem Header="{local:T 'Abrir el registro'}" Click="LogClick"/><MenuItem Header="{local:T 'Copiar datos para soporte'}" Click="SupportClick"/><MenuItem Header="{local:T 'Acerca de BuzzDesk'}" Click="AboutClick"/></MenuItem>
               </Menu>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

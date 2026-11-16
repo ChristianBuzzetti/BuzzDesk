@@ -147,16 +147,18 @@ if ($Msix) {
     }
 }
 if ($Shot) {
-    # Capturas del README: base de demostración en artifacts\shots\demo, interfaz en inglés; los PNG van a docs\.
-    $dir = Join-Path $PSScriptRoot 'artifacts\shots'
-    if (Test-Path -LiteralPath $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
-    New-Item -ItemType Directory -Force $dir | Out-Null
-    $p = Start-Process -FilePath (Join-Path $Output 'BuzzDesk.exe') -ArgumentList ('--shot "' + $dir + '" --lang en') -PassThru
-    if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'La verificación visual no terminó en 120 s.' }
-    Get-Content (Join-Path $dir 'shots.log')
-    if ((Get-Content (Join-Path $dir 'shots.log') -Tail 1) -ne 'OK') { throw 'Las capturas fallaron: ver artifacts\shots\shots.log.' }
-    $docs = Join-Path $PSScriptRoot 'docs'
-    New-Item -ItemType Directory -Force $docs | Out-Null
-    Copy-Item -Path (Join-Path $dir '*.png') -Destination $docs -Force
-    Write-Output "Capturas en $docs"
+    # Capturas del README: base de demostración temporal; en inglés a docs\ y en español a docs\es\.
+    foreach ($lang in 'en', 'es') {
+        $dir = Join-Path $PSScriptRoot "artifacts\shots\$lang"
+        if (Test-Path -LiteralPath $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
+        New-Item -ItemType Directory -Force $dir | Out-Null
+        $p = Start-Process -FilePath (Join-Path $Output 'BuzzDesk.exe') -ArgumentList ('--shot "' + $dir + '" --lang ' + $lang) -PassThru
+        if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "La verificación visual ($lang) no terminó en 120 s." }
+        Get-Content (Join-Path $dir 'shots.log')
+        if ((Get-Content (Join-Path $dir 'shots.log') -Tail 1) -ne 'OK') { throw "Las capturas ($lang) fallaron: ver $dir\shots.log." }
+        $docs = if ($lang -eq 'en') { Join-Path $PSScriptRoot 'docs' } else { Join-Path $PSScriptRoot "docs\$lang" }
+        New-Item -ItemType Directory -Force $docs | Out-Null
+        Copy-Item -Path (Join-Path $dir '*.png') -Destination $docs -Force
+        Write-Output "Capturas ($lang) en $docs"
+    }
 }

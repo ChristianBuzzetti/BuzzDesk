@@ -644,3 +644,63 @@ public class CloudBackupTests : IDisposable
         Assert.True(left.Count <= 30 + 12);
     }
 }
+
+[Collection("db")]
+public class ExportTests : IDisposable
+{
+    readonly TempDb db = new();
+    public void Dispose() => db.Dispose();
+
+    [Theory]
+    [InlineData("simple", ',', "simple")]
+    [InlineData("a,b", ',', "\"a,b\"")]
+    [InlineData("a;b", ',', "a;b")]
+    [InlineData("say \"hi\"", ';', "\"say \"\"hi\"\"\"")]
+    [InlineData("=HYPERLINK(\"x\")", ',', "\"'=HYPERLINK(\"\"x\"\")\"")]
+    [InlineData("-12.5", ',', "-12.5")]
+    public void Quoting(string text, char sep, string expected) => Assert.Equal(expected, Export.Quote(text, sep));
+
+    [Fact]
+    public void Writes_every_file_for_excel()
+    {
+        var today = new DateOnly(2026, 11, 15);
+        long t = Tasks.Add(new Tasks.Draft("Pagar; luz", DueDate: today, Tags: ["casa"], Notes: "línea 1\nlínea 2"), today);
+        Tasks.Add(new Tasks.Draft("Sub", ParentId: t), today);
+        long b = Bills.Add(new Bill { Name = "Luz", AmountCents = 1_234_550, Currency = "ARS", NextDue = today });
+        Bills.Pay(b, null, today);
+        string dir = Path.Combine(db.Dir, "export");
+        var files = Export.All(dir, new Export.Options(';', utc => utc.AddHours(-3), ","));
+        Assert.Equal(9, files.Count);
+        var bytes = File.ReadAllBytes(Path.Combine(dir, "tasks.csv"));
+        Assert.Equal(new byte[] { 0xEF, 0xBB, 0xBF }, bytes[..3]);                  // BOM: Excel reads UTF-8
+        string tasks = File.ReadAllText(Path.Combine(dir, "tasks.csv"));
+        Assert.StartsWith("id;parent;title;", tasks);
+        Assert.Contains("\"Pagar; luz\"", tasks);
+        Assert.Contains("\"línea 1\nlínea 2\"", tasks);
+        Assert.Contains(";Pagar; luz;Sub;", tasks.Replace("\"", ""));                 // the subtask names its parent
+        string payments = File.ReadAllText(Path.Combine(dir, "payments.csv"));
+        Assert.Contains("12345,5;ARS", payments);                                    // decimal comma for Spanish Excel
+    }
+}
+
+[Collection("db")]
+public class UndoTests : IDisposable
+{
+    readonly TempDb db = new();
+    public void Dispose() => db.Dispose();
+
+    [Fact]
+    public void Undo_complete_removes_the_created_instance()
+    {
+        var today = new DateOnly(2026, 11, 15);
+        long id = Tasks.Add(new Tasks.Draft("Semanal", DueDate: today, Recurrence: new RecurrenceRule(Freq.Weekly)), today);
+        Tasks.Add(new Tasks.Draft("paso", ParentId: id), today);
+        long? next = Tasks.Complete(id, today);
+        Assert.NotNull(next);
+        Tasks.UndoComplete(id, next);
+        var open = Tasks.List(new TaskFilter(TaskScope.Open), today);
+        Assert.Equal([id], open.Select(t => t.Id));
+        Assert.Null(Tasks.Get(next!.Value));
+        Assert.Equal(1, Tasks.Get(id)!.SubtaskCount);
+    }
+}

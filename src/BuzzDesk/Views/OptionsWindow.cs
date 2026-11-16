@@ -22,6 +22,15 @@ public static class OptionsUi
         var startup = new CheckBox { Content = L.T("Iniciar con Windows (para que los recordatorios suenen siempre)"), IsChecked = App.StartupEnabled };
         form.AddRaw(startup);
 
+        var test = Ui.ToolButton("\uEA8F", L.T("Probar una notificación"), (_, _) =>
+        {
+            bool ok = Toasts.ShowNotice(L.T("Así se ven los avisos de BuzzDesk"), L.T("Si no aparece, revisá Configuración → Sistema → Notificaciones → BuzzDesk, y el modo No molestar."), "today");
+            if (!ok) App.Current.Toast(L.T("Así se ven los avisos de BuzzDesk"), L.T("Las notificaciones de Windows no están disponibles: BuzzDesk usa los globos de la bandeja."));
+            Log.Info("test notification: " + (ok ? "toast" : "balloon"));
+        }, L.T("Muestra un aviso de prueba ahora"));
+        test.Margin = new Thickness(0, 10, 0, 0); test.HorizontalAlignment = HorizontalAlignment.Left;
+        form.AddRaw(test);
+
         form.AddRaw(Ui.Label(L.T("Copias de seguridad locales"), new Thickness(0, 20, 0, 0)));
         var keepRow = new StackPanel { Orientation = Orientation.Horizontal };
         var daily = new TextBox { Width = 60, Text = st.BackupKeepDaily.ToString() };

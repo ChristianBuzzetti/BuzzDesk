@@ -727,5 +727,18 @@ static class LocEn
         ["Registro:"] = "Log:",
         ["Semanales"] = "Weekly",
         ["Usá Ctrl, Alt o Win"] = "Use Ctrl, Alt or Win",
+        // ---- BuzzDesk export and support
+        ["Así se ven los avisos de BuzzDesk"] = "This is how BuzzDesk notices look",
+        ["Copiar datos para soporte"] = "Copy support info",
+        ["Datos para soporte copiados"] = "Support info copied",
+        ["Elegí dónde guardar los archivos CSV"] = "Choose where to save the CSV files",
+        ["Exportados {0} archivos en {1}"] = "Exported {0} files to {1}",
+        ["Exportar todo a CSV (Excel)…"] = "Export everything to CSV (Excel)…",
+        ["Las notificaciones de Windows no están disponibles: BuzzDesk usa los globos de la bandeja."] = "Windows notifications aren't available: BuzzDesk uses tray balloons.",
+        ["Muestra un aviso de prueba ahora"] = "Shows a test notice now",
+        ["No se pudo exportar"] = "Could not export",
+        ["Pegalos donde quieras (mail, chat). No incluyen tus pendientes, notas ni enlaces."] = "Paste it anywhere (mail, chat). It doesn't include your tasks, notes or links.",
+        ["Probar una notificación"] = "Test a notification",
+        ["Si no aparece, revisá Configuración → Sistema → Notificaciones → BuzzDesk, y el modo No molestar."] = "If it doesn't show, check Settings → System → Notifications → BuzzDesk, and Do not disturb.",
     };
 }

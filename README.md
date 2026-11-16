@@ -14,6 +14,8 @@ BuzzDesk is the sibling of [BuzzPrint](https://github.com/ChristianBuzzetti/Buzz
 | **Links** | **Quick capture** |
 | ![Links](docs/links.png) | ![Quick capture](docs/quick-capture.png) |
 
+Screenshots in Spanish: [`docs/es`](docs/es).
+
 **Requirements:** Windows 10/11 and Microsoft Edge WebView2 Runtime (included with Windows 11). To build: .NET 10 SDK.
 
 ## What it does
@@ -29,6 +31,8 @@ BuzzDesk is the sibling of [BuzzPrint](https://github.com/ChristianBuzzetti/Buzz
 - **Links**: URL, title and icon (fetched from the site itself, can be turned off), tags, pinned links in Today, search as you type, and a launcher (`Ctrl+Alt+L` anywhere).
 - **Quick capture** (`Ctrl+Alt+Space`): a small card next to the cursor for a task, note, reminder, link or list items in two seconds.
 - **Search** (`Ctrl+F`): one box over tasks, topics, notes, links, lists, bills and dates; accents don't matter, word beginnings match.
+- **Export**: *File → Export everything to CSV (Excel)*, one file per kind, with your Windows list and decimal separators.
+- **Options**: global shortcuts (press the combination to record it), start with Windows, backup retention, default currency, a test notification. *Help → Copy support info* and *Help → Open the log* for when something doesn't work.
 - **Cloud backup**: *File → Cloud backup* picks a folder your cloud client syncs (OneDrive, Google Drive, Dropbox and iCloud are detected) or any other; a verified copy goes there once a day and on exit if anything changed, encrypted with your passphrase (AES-256-GCM) by default. *File → Restore from a backup* checks a copy and brings it back.
 
 ## Download (no build needed)

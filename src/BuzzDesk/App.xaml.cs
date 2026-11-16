@@ -17,6 +17,8 @@ public partial class App : Application
     public event Action<AppearanceSettings>? AppearanceChanged;
     public bool Exiting { get; private set; }
     public static bool IsShot { get; private set; }
+    /// <summary>Windows' regional format (Excel's list and decimal separators), kept before the app sets its own.</summary>
+    public static System.Globalization.CultureInfo WindowsCulture { get; private set; } = System.Globalization.CultureInfo.InvariantCulture;
     public static string? ShotDir { get; private set; }
 
     MainWindow? main;
@@ -47,6 +49,7 @@ public partial class App : Application
             ThreadPool.RegisterWaitForSingleObject(showSignal, (_, _) => Dispatcher.BeginInvoke(ShowMain), null, -1, false);
         }
 
+        WindowsCulture = System.Globalization.CultureInfo.CurrentCulture;   // before the app's language overrides it
         Store.Init();
         Store.ReadOnly = IsShot;
         HookErrors();
@@ -125,6 +128,30 @@ public partial class App : Application
                 L.T("Detalle:") + " " + details + "\n" + L.T("Registro:") + " " + Log.Today,
                 L.T("Abrir el registro"), L.T("Cerrar")))
             OpenLog();
+    }
+
+    /// <summary>Help → Copy support info: what to send when something doesn't work (no personal data).</summary>
+    public string SupportInfo()
+    {
+        var sb = new System.Text.StringBuilder();
+        void Line(string k, string v) => sb.AppendLine(k.PadRight(14) + v);
+        Line("App", Log.Environment_());
+        Line("Exe", Environment.ProcessPath ?? "");
+        Line("Data", DataFolder.Root);
+        try { using var c = Db.Open(); Line("Schema", "v" + Migrator.CurrentVersion(c) + " · " + Db.Scalar<string>(c, "PRAGMA journal_mode;") + " · quick_check " + Db.Scalar<string>(c, "PRAGMA quick_check;")); }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or InvalidOperationException) { Line("Schema", "error " + ex.Message); }
+        Line("Backups", Db.BackupDir + " · " + (Directory.Exists(Db.BackupDir) ? Directory.GetFiles(Db.BackupDir, "*.db").Length : 0) + " files");
+        Line("Cloud", Cloud.Status() + (Store.Settings.CloudEncrypt ? " · encrypted" : ""));
+        Line("Toasts", Toasts.Available ? "available" : "fallback to tray balloons");
+        Line("Hotkeys", (CaptureHotkeyText.Length > 0 ? CaptureHotkeyText : "capture NOT registered (" + Store.Settings.HotkeyCapture + ")") + " · " + Store.Settings.HotkeyLauncher);
+        Line("Startup", StartupEnabled ? "with Windows" : "manual");
+        string web;
+        try { web = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString() ?? "missing"; }
+        catch (Exception ex) when (ex is Microsoft.Web.WebView2.Core.WebView2RuntimeNotFoundException or FileNotFoundException or DllNotFoundException) { web = "missing"; }
+        Line("WebView2", web);
+        Line("Region", WindowsCulture.Name + " · list '" + WindowsCulture.TextInfo.ListSeparator + "' · decimal '" + WindowsCulture.NumberFormat.NumberDecimalSeparator + "'");
+        Line("Log", Log.Today);
+        return sb.ToString();
     }
 
     public static void OpenLog()
