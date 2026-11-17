@@ -8,7 +8,10 @@ namespace BuzzDesk
     /// the person's data lives in SQLite (Data.Db).</summary>
     public class Settings
     {
-        public string HotkeyCapture = "Ctrl+Alt+Space";   // quick capture, anywhere in Windows
+        public string HotkeyCapture = "Ctrl+Shift+Space"; // quick capture, anywhere in Windows (Ctrl+Alt+Space is Claude's)
+        /// <summary>One-time upgrades of older settings (2 = the redesign: Segoe UI, new capture key, new navigation).</summary>
+        public int DesignVersion = 0;
+        public string CalendarMode = "month";             // calendar view: month | week
         public string Language = "en";                    // en | es
         /// <summary>Windows time zone id used for "today", due dates and reminders. Empty = follow Windows.</summary>
         public string TimeZoneId = "";

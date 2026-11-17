@@ -80,7 +80,8 @@ public static class Ui
         return b;
     }
 
-    public static ScrollViewer Scroll(UIElement content) => new() { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+    // Not focusable: a focused ScrollViewer drew WPF's dotted focus rectangle around the whole list.
+    public static ScrollViewer Scroll(UIElement content) => new() { Content = content, Focusable = false, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
 }
 
 /// <summary>A small on/off chip (weekdays of a repeat or a habit).</summary>

@@ -49,6 +49,6 @@ public sealed record TaskItem
 }
 
 /// <summary>Which tasks a list shows.</summary>
-public enum TaskScope { Open, Today, Upcoming, NoDate, Done, All }
+public enum TaskScope { Open, Today, Upcoming, NoDate, Done, All, Inbox, Week }
 
 public sealed record TaskFilter(TaskScope Scope = TaskScope.Open, long? SectionId = null, long? TagId = null, long? TopicId = null, string? Text = null, int Limit = 500);

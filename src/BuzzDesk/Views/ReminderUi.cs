@@ -61,6 +61,21 @@ public static class ReminderUi
         Preset(L.T("Mañana 9:00"), () => ReminderScheduler.TomorrowMorning());
         if (due != null)
             Preset(L.T("Al vencer"), () => due() is { date: DateOnly d } x ? Clock.ToUtc(d, x.time ?? new TimeOnly(9, 0)) : null, L.T("El día del vencimiento, a su hora (o a las 9:00)"));
+        // Any day from the calendar: the box gets "día 9:00" to adjust the hour and Enter.
+        var pickDay = new Button { Padding = new Thickness(8, 0, 8, 0), Height = 26, Margin = new Thickness(0, 0, 6, 6), ToolTip = L.T("Elegí el día en el calendario y ajustá la hora") };
+        var pickRow = new StackPanel { Orientation = Orientation.Horizontal };
+        var cal = Ui.Glyph("", 11, "Accent"); cal.Margin = new Thickness(0, 0, 6, 0);
+        pickRow.Children.Add(cal); pickRow.Children.Add(new TextBlock { Text = L.T("Elegir día…"), VerticalAlignment = VerticalAlignment.Center });
+        pickDay.Content = pickRow;
+        pickDay.SetResourceReference(FrameworkElement.StyleProperty, "PillButton");
+        pickDay.Click += (_, _) => DatePopup.Open(pickDay, null, d =>
+        {
+            if (d is not DateOnly day) return;
+            box.Text = Fmt.DateBox(day) + " 9:00";
+            box.Focus(); box.Select(box.Text.Length - 4, 4);
+            Hint(hint, L.T("Ajustá la hora y Enter."), false);
+        }, allowEmpty: false);
+        presets.Children.Add(pickDay);
         block.Children.Add(presets);
         box.ToolTip = L.T("Por ejemplo: mañana 15:00, viernes 9, 18hs");
         box.KeyDown += (_, e) =>

@@ -15,7 +15,7 @@ public static class OptionsUi
         var form = new FormWindow(L.T("Opciones"));
 
         form.AddRaw(Ui.Label(L.T("Atajos globales"), new Thickness(0, 16, 0, 0)));
-        var capture = form.Add(L.T("Captura rápida"), HotkeyBox(st.HotkeyCapture), L.T("Hacé clic y apretá la combinación (por ejemplo Ctrl+Alt+Espacio)."));
+        var capture = form.Add(L.T("Captura rápida"), HotkeyBox(st.HotkeyCapture), L.T("Hacé clic y apretá la combinación (por ejemplo Ctrl+Shift+Espacio). Evitá Ctrl+Alt+Espacio: la usa Claude."));
         var launcher = form.Add(L.T("Lanzador de enlaces"), HotkeyBox(st.HotkeyLauncher));
 
         form.AddRaw(Ui.Label(L.T("Inicio"), new Thickness(0, 20, 0, 0)));

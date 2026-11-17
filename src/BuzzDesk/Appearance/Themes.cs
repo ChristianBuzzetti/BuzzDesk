@@ -66,7 +66,6 @@ public static class Themes
     {
         var accent = (Color)ColorConverter.ConvertFromString(palette.Colors["Accent"]);
         var ink = (Color)ColorConverter.ConvertFromString(palette.Colors["Ink"]);
-        var canvas = (Color)ColorConverter.ConvertFromString(palette.Colors["Canvas"]);
         SolidColorBrush Mix(Color c, double alpha) { var brush = new SolidColorBrush(Color.FromArgb((byte)Math.Round(255 * alpha), c.R, c.G, c.B)); brush.Freeze(); return brush; }
         resources["AccentRing"] = Mix(accent, .60);
         resources["AccentCardRing"] = Mix(accent, .32);
@@ -82,19 +81,9 @@ public static class Themes
         resources["Ok"] = Brush(palette.Colors["SqlString"]);
         resources["OkGlow"] = Mix((Color)ColorConverter.ConvertFromString(palette.Colors["SqlString"]), .25);
         resources["StrongBorder"] = Mix(ink, .16);
-        // Neo Mirai background: a 112 px grid of 1 px lines in the text color at 3.5% (vertical) and 2.5% (horizontal).
-        var grid = new DrawingGroup();
-        grid.Children.Add(new GeometryDrawing(new SolidColorBrush(canvas), null, new RectangleGeometry(new Rect(0, 0, 112, 112))));
-        grid.Children.Add(new GeometryDrawing(Mix(ink, .035), null, new RectangleGeometry(new Rect(0, 0, 1, 112))));
-        grid.Children.Add(new GeometryDrawing(Mix(ink, .025), null, new RectangleGeometry(new Rect(0, 0, 112, 1))));
-        var gridBrush = new DrawingBrush(grid) { TileMode = TileMode.Tile, Viewport = new Rect(0, 0, 112, 112), ViewportUnits = BrushMappingMode.Absolute, Stretch = Stretch.None };
-        gridBrush.Freeze(); resources["CanvasGrid"] = gridBrush;
-        // Subbar hairlines: a 1 px accent line at 5% every 8 px.
-        var hair = new DrawingGroup();
-        hair.Children.Add(new GeometryDrawing(Brushes.Transparent, null, new RectangleGeometry(new Rect(0, 0, 8, 8))));
-        hair.Children.Add(new GeometryDrawing(Mix(accent, .05), null, new RectangleGeometry(new Rect(0, 0, 1, 8))));
-        var hairBrush = new DrawingBrush(hair) { TileMode = TileMode.Tile, Viewport = new Rect(0, 0, 8, 8), ViewportUnits = BrushMappingMode.Absolute, Stretch = Stretch.None };
-        hairBrush.Freeze(); resources["SubbarHairlines"] = hairBrush;
+        // Plain backgrounds: the Neo Mirai grid and the subbar's hairline stripes are gone (the redesign asked for calm surfaces).
+        resources["CanvasGrid"] = Brush(palette.Colors["Canvas"]);
+        resources["SubbarHairlines"] = Brush(palette.Colors["Canvas"]);
         // bzp_edge_bar_css(): transparent → accent 45% → 85% → 45% → transparent.
         var edge = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 0) };
         edge.GradientStops.Add(new GradientStop(Color.FromArgb(0, accent.R, accent.G, accent.B), 0));

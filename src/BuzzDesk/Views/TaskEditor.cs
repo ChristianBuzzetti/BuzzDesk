@@ -16,8 +16,7 @@ public sealed class TaskEditor : Border
     readonly TextBox title = new() { FontSize = 16, TextWrapping = TextWrapping.Wrap, AcceptsReturn = false, Padding = new Thickness(8, 6, 8, 6) };
     readonly ComboBox section = new() { MinWidth = 160 };
     readonly ComboBox priority = new() { MinWidth = 120 };
-    readonly ComboBox topicBox = new() { MinWidth = 200, MaxWidth = 340 };
-    readonly TextBox dueDate = new() { MinWidth = 150 };
+    readonly DateField dueDate = new() { MinWidth = 190 };
     readonly TextBox dueTime = new() { Width = 70 };
     readonly TextBlock dueHint = Ui.Text("", "Muted", 11.5);
     readonly ComboBox repeat = new() { MinWidth = 170 };
@@ -59,38 +58,22 @@ public sealed class TaskEditor : Border
         for (int p = 3; p >= 0; p--) priority.Items.Add(new ComboBoxItem { Content = Fmt.Priority(p), Tag = p });
         row.Children.Add(Field(L.T("Prioridad"), priority));
         body.Children.Add(row);
-        var topicRow = new StackPanel { Orientation = Orientation.Horizontal };
-        topicRow.Children.Add(topicBox);
-        topicRow.Children.Add(Ui.IconButton("\uE8A7", (_, _) => { if (task?.TopicId is long tp) (Window.GetWindow(this) as MainWindow)?.OpenTopic(tp); }, L.T("Abrir el tema")));
-        body.Children.Add(Field(L.T("Tema"), topicRow));
-        topicBox.SelectionChanged += (_, _) => Save();
         section.SelectionChanged += (_, _) => Save();
         priority.SelectionChanged += (_, _) => Save();
 
         // due date
-        body.Children.Add(Ui.Label(L.T("Vencimiento")));
+        body.Children.Add(Ui.Label(L.T("Fecha")));
         var dueRow = new StackPanel { Orientation = Orientation.Horizontal };
         dueRow.Children.Add(dueDate);
-        var at = Ui.Text(L.T("a las"), "Muted"); at.Margin = new Thickness(8, 0, 8, 0);
+        var at = Ui.Text(L.T("a las"), "Muted"); at.Margin = new Thickness(10, 0, 8, 0);
         dueRow.Children.Add(at);
         dueRow.Children.Add(dueTime);
         body.Children.Add(dueRow);
-        dueDate.ToolTip = L.T("hoy, mañana, viernes, 25/11, +3d… Vacío: sin fecha");
+        dueDate.ToolTip = L.T("Elegí el día en el calendario");
         dueTime.ToolTip = L.T("9, 9:30, 18hs… Vacío: sin hora");
-        dueDate.LostKeyboardFocus += (_, _) => SaveDue();
+        dueDate.DateChanged += _ => SaveDue();
         dueTime.LostKeyboardFocus += (_, _) => SaveDue();
-        dueDate.KeyDown += (_, e) => { if (e.Key == Key.Enter) { SaveDue(); e.Handled = true; } };
         dueTime.KeyDown += (_, e) => { if (e.Key == Key.Enter) { SaveDue(); e.Handled = true; } };
-        var quick = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
-        foreach (var (label, days) in new[] { (L.T("Hoy"), 0), (L.T("Mañana"), 1), (L.T("En una semana"), 7), (L.T("Sin fecha"), -1) })
-        {
-            var b = new Button { Content = label, Padding = new Thickness(8, 0, 8, 0), Height = 26 };
-            b.SetResourceReference(StyleProperty, "PillButton");
-            b.Margin = new Thickness(0, 0, 6, 0);
-            b.Click += (_, _) => { dueDate.Text = days < 0 ? "" : Fmt.DateBox(Clock.Today.AddDays(days)); if (days < 0) dueTime.Text = ""; SaveDue(); };
-            quick.Children.Add(b);
-        }
-        body.Children.Add(quick);
         dueHint.Margin = new Thickness(0, 4, 0, 0);
         body.Children.Add(dueHint);
 
@@ -220,14 +203,7 @@ public sealed class TaskEditor : Border
                 section.Items.Add(new ComboBoxItem { Content = (s.IsArea ? "" : "    ") + s.Name, Tag = s.Id });
             section.SelectedItem = section.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (long?)i.Tag == t.SectionId) ?? section.Items[0];
             priority.SelectedItem = priority.Items.Cast<ComboBoxItem>().First(i => (int)i.Tag == t.Priority);
-            topicBox.Items.Clear();
-            topicBox.Items.Add(new ComboBoxItem { Content = L.T("(Ninguno)"), Tag = null });
-            foreach (var tp in Topics.List(TopicScope.Open, Clock.Today))
-                topicBox.Items.Add(new ComboBoxItem { Content = tp.Title, Tag = tp.Id });
-            if (t.TopicId is long current && !topicBox.Items.Cast<ComboBoxItem>().Any(i => (long?)i.Tag == current))
-                topicBox.Items.Add(new ComboBoxItem { Content = t.TopicTitle ?? "#" + current, Tag = current });
-            topicBox.SelectedItem = topicBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (long?)i.Tag == t.TopicId) ?? topicBox.Items[0];
-            dueDate.Text = Fmt.DateBox(t.DueDate);
+            dueDate.Date = t.DueDate;
             dueTime.Text = t.DueTime is TimeOnly time ? time.ToString("HH:mm") : "";
             ShowDueHint();
             var r = t.Recurrence;
@@ -331,7 +307,8 @@ public sealed class TaskEditor : Border
     void SaveDue()
     {
         if (loading || task == null) return;
-        if (!QuickParse.TryDate(dueDate.Text, Clock.Today, out var date)) { dueHint.Text = L.T("No entiendo esa fecha. Probá: hoy, mañana, viernes, 25/11, +3d"); dueHint.SetResourceReference(TextBlock.ForegroundProperty, "ErrorInk"); return; }
+        var date = dueDate.Date;
+        if (date == null) dueTime.Text = "";
         if (!QuickParse.TryTime(dueTime.Text, out var time)) { dueHint.Text = L.T("No entiendo esa hora. Probá: 9, 9:30, 18hs"); dueHint.SetResourceReference(TextBlock.ForegroundProperty, "ErrorInk"); return; }
         Commit(task with { DueDate = date, DueTime = date == null ? null : time });
         ShowDueHint();
@@ -346,7 +323,6 @@ public sealed class TaskEditor : Border
             Title = title.Text.Trim(),
             SectionId = (long?)((ComboBoxItem?)section.SelectedItem)?.Tag,
             Priority = (int)((ComboBoxItem)priority.SelectedItem).Tag,
-            TopicId = (long?)((ComboBoxItem?)topicBox.SelectedItem)?.Tag,
             Notes = notes.Text,
         }, tags.Text.Split([',', ' ', ';'], StringSplitOptions.RemoveEmptyEntries).ToList());
     }
@@ -362,7 +338,7 @@ public sealed class TaskEditor : Border
         loading = true;
         try
         {
-            dueDate.Text = Fmt.DateBox(task.DueDate);
+            dueDate.Date = task.DueDate;
             dueTime.Text = task.DueTime is TimeOnly t ? t.ToString("HH:mm") : "";
             tags.Text = string.Join(", ", task.Tags);
             ShowRepeatDetail();

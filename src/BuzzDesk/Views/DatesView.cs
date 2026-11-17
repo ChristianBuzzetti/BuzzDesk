@@ -101,19 +101,19 @@ public sealed class DatesView : DeskView
         kind.SelectedItem = kind.Items.Cast<ComboBoxItem>().First(i => (string)i.Tag == (d?.Kind ?? "birthday"));
         var person = form.Add(L.T("Persona (opcional)"), new TextBox { Text = d?.PersonName ?? "" });
         var label = form.Add(L.T("Nombre"), new TextBox { Text = d?.Label ?? "" }, L.T("Vacío: \"Cumple de\" y la persona"));
-        string dayText = d == null ? "" : (QuickParse.MonthFirst ? d.Month + "/" + d.Day : d.Day + "/" + d.Month) + (d.Year is int y ? "/" + y : "");
-        var date = form.Add(L.T("Fecha"), new TextBox { Width = 160, HorizontalAlignment = HorizontalAlignment.Left, Text = dayText },
-            QuickParse.MonthFirst ? L.T("mes/día, y el año si lo sabés (para la edad): 3/22/1990") : L.T("día/mes, y el año si lo sabés (para la edad): 22/3/1990"));
+        // The calendar picks day and month; the year counts only when "I know the year" is on (for the age).
+        var date = form.Add(L.T("Fecha"), new DateField { AllowEmpty = false, EmptyText = L.T("Elegí el día"),
+            Date = d == null ? null : new DateOnly(d.Year ?? Clock.Today.Year, d.Month, d.Month == 2 && d.Day == 29 && !DateTime.IsLeapYear(d.Year ?? Clock.Today.Year) ? 28 : d.Day) });
+        var knowYear = new CheckBox { Content = L.T("Sé el año (para calcular la edad)"), IsChecked = d?.Year != null };
+        form.AddRaw(knowYear);
         var remind = form.Add(L.T("Avisar días antes"), new TextBox { Width = 80, HorizontalAlignment = HorizontalAlignment.Left, Text = (d?.RemindDaysBefore ?? 3).ToString() });
         int month = 0, day = 0, days = 3; int? year = null;
         if (!form.Ask(App.Current.Desk, () =>
         {
-            var parts = date.Text.Trim().Split('/', '-', '.');
-            if (parts.Length is < 2 or > 3 || !int.TryParse(parts[0], out int a) || !int.TryParse(parts[1], out int b)) return L.T("Escribí la fecha como día/mes (o día/mes/año).");
-            (day, month) = QuickParse.MonthFirst ? (b, a) : (a, b);
-            year = parts.Length == 3 && int.TryParse(parts[2], out int yy) ? (yy < 100 ? yy + (yy > DateTime.Today.Year % 100 ? 1900 : 2000) : yy) : null;
-            if (month is < 1 or > 12 || day < 1 || day > (month == 2 ? 29 : DateTime.DaysInMonth(2001, month))) return L.T("Esa fecha no existe.");
-            if (year is int yr && (yr < 1900 || yr > 2200 || month == 2 && day == 29 && !DateTime.IsLeapYear(yr))) return L.T("Esa fecha no existe.");
+            if (date.Date is not DateOnly picked) return L.T("Elegí el día en el calendario.");
+            (day, month) = (picked.Day, picked.Month);
+            year = knowYear.IsChecked == true ? picked.Year : null;
+            if (year is int yr && yr < 1900) return L.T("Esa fecha no existe.");
             if (label.Text.Trim().Length == 0 && person.Text.Trim().Length == 0) return L.T("Poné un nombre o una persona.");
             if (!int.TryParse(remind.Text, out days) || days is < 0 or > 60) return L.T("Avisar: de 0 a 60 días antes.");
             return null;

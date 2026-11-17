@@ -42,7 +42,6 @@ public static class TaskRows
         text.Children.Add(title);
         var meta = new WrapPanel { Margin = new Thickness(0, 3, 0, 0) };
         if (showSection && t.SectionName != null) meta.Children.Add(Ui.Chip(t.SectionName));
-        if (t.TopicTitle != null) meta.Children.Add(Ui.Chip("◆ " + t.TopicTitle, "AccentWeak", "Accent"));
         foreach (var tag in t.Tags) meta.Children.Add(Ui.Chip("#" + tag, "AlternateRow", "Muted"));
         if (t.Recurrence != null) { var g = Ui.Glyph("", 11); g.Margin = new Thickness(0, 0, 8, 0); g.ToolTip = Fmt.Rule(t.Recurrence); meta.Children.Add(g); }
         if (t.SubtaskCount > 0) meta.Children.Add(Small("☐ " + t.SubtaskDone + "/" + t.SubtaskCount));
@@ -81,6 +80,51 @@ public static class TaskRows
         grid.MouseLeftButtonUp += (_, e) => { if (e.OriginalSource is not CheckBox) open(t); };
         grid.ContextMenu = Actions.TaskMenu(t);
         return grid;
+    }
+
+    /// <summary>A titled group of plain rows (Today, Upcoming): "ATRASADOS · 3" with an optional action on the right,
+    /// then one row per task divided by hairlines; the selected one is tinted. <paramref name="empty"/> shows a
+    /// muted line when the group has no tasks (otherwise an empty group is left out).</summary>
+    public static FrameworkElement Group(string title, string brush, List<TaskItem> items, DateOnly today, Action<TaskItem> open, long? selected,
+        FrameworkElement? action = null, string? empty = null, Action? add = null)
+    {
+        var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
+        if (items.Count == 0 && empty == null && add == null) return stack;
+        var head = new DockPanel { Margin = new Thickness(2, 16, 0, 4) };
+        if (action != null) { DockPanel.SetDock(action, Dock.Right); head.Children.Add(action); }
+        var label = Ui.Text(title + (items.Count > 0 ? "   " + items.Count : ""), brush, 13.5, FontWeights.SemiBold);
+        head.Children.Add(label);
+        stack.Children.Add(head);
+        var rule = new Border { Height = 1, Margin = new Thickness(0, 0, 0, 2) };
+        rule.SetResourceReference(Border.BackgroundProperty, "FaintBorder");
+        stack.Children.Add(rule);
+        foreach (var t in items) stack.Children.Add(Plain(t, today, open, selected == t.Id));
+        if (items.Count == 0 && empty != null)
+        {
+            var e = Ui.Text(empty, "Muted", 12.5);
+            e.Margin = new Thickness(6, 10, 0, 6);
+            stack.Children.Add(e);
+        }
+        if (add != null)
+        {
+            var plus = new Button { Content = "+ " + L.T("Agregar pendiente"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 2, 0, 0) };
+            plus.SetResourceReference(FrameworkElement.StyleProperty, "LinkButton");
+            plus.Click += (_, _) => add();
+            stack.Children.Add(plus);
+        }
+        return stack;
+    }
+
+    /// <summary>One task as a flat row with a hairline below; hover lifts it, the selected one takes the accent tint.</summary>
+    public static Border Plain(TaskItem t, DateOnly today, Action<TaskItem> open, bool isSelected, bool showSection = true)
+    {
+        var frame = new Border { Child = Build(t, today, open, showSection), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 0, 4, 0), Cursor = Cursors.Hand };
+        frame.SetResourceReference(Border.BorderBrushProperty, "FaintBorder");
+        void Paint(bool hover) { if (isSelected) frame.SetResourceReference(Border.BackgroundProperty, "AccentWeak"); else if (hover) frame.SetResourceReference(Border.BackgroundProperty, "AlternateRow"); else frame.Background = System.Windows.Media.Brushes.Transparent; }
+        frame.MouseEnter += (_, _) => Paint(true);
+        frame.MouseLeave += (_, _) => Paint(false);
+        Paint(false);
+        return frame;
     }
 
     static TextBlock Small(string text, string? tip = null)
@@ -148,11 +192,7 @@ public static class Actions
         }
         menu.Add(new Separator());
         var pick = new MenuItem { Header = L.T("Elegir fecha…") };
-        pick.Click += (_, _) =>
-        {
-            string? text = PromptWindow.Ask(App.Current.Desk, L.T("Posponer"), L.T("¿Para cuándo? (por ejemplo: viernes, 25/11, +2w)"), "");
-            if (text != null && QuickParse.TryDate(text, Clock.Today, out var to) && to is DateOnly x) Postpone(t, x);
-        };
+        pick.Click += (_, _) => DatePopup.Open(null, t.DueDate, d => { if (d is DateOnly x) Postpone(t, x); }, allowEmpty: false);
         menu.Add(pick);
         return menu;
     }

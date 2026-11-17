@@ -26,6 +26,12 @@ static class Shots
         try
         {
             Seed(log);
+            // The demo seeds topics the old way; convert them as an upgraded database would.
+            using (var c = Db.Open())
+            {
+                Db.Exec(c, "DELETE FROM app_meta WHERE key = 'topics_converted'");
+                log.Add("redesign: " + Redesign.ConvertTopics(c, L.T) + " topics converted");
+            }
             main.Width = 1440; main.Height = 900;
             main.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             main.Show();
@@ -40,10 +46,30 @@ static class Shots
             await Task.Delay(1500);
             Save(main, Path.Combine(dir, "tasks.png"), log);
 
-            var topic = Topics.List(TopicScope.Open, Clock.Today).First(t => t.Status == TopicState.Waiting);
-            main.OpenTopic(topic.Id);
-            await Task.Delay(1500);
-            Save(main, Path.Combine(dir, "topics.png"), log);
+            // The date drop-down, in a window of its own so PrintWindow can capture it.
+            var (card, _) = DatePopup.Card(Clock.Today.AddDays(3), _ => { }, () => { });
+            card.Effect = null; card.Margin = new Thickness(0);
+            var pickerWindow = new Window { Content = card, SizeToContent = SizeToContent.WidthAndHeight, WindowStyle = WindowStyle.None, ShowInTaskbar = false, Left = 40, Top = 40 };
+            pickerWindow.SetResourceReference(Window.BackgroundProperty, "Canvas");
+            pickerWindow.Show();
+            await Task.Delay(800);
+            Save(pickerWindow, Path.Combine(dir, "date-picker.png"), log);
+            pickerWindow.Close();
+
+            main.Navigate("upcoming");
+            await Task.Delay(1200);
+            Save(main, Path.Combine(dir, "upcoming.png"), log);
+
+            main.Navigate("calendar");
+            await Task.Delay(1200);
+            Save(main, Path.Combine(dir, "calendar.png"), log);
+            ((CalendarView)main.CurrentView!).ShotWeek();
+            await Task.Delay(1000);
+            Save(main, Path.Combine(dir, "calendar-week.png"), log);
+
+            main.Navigate("inbox");
+            await Task.Delay(1000);
+            Save(main, Path.Combine(dir, "inbox.png"), log);
 
             main.Navigate("links");
             await Task.Delay(1200);

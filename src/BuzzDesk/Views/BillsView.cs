@@ -184,7 +184,7 @@ public sealed class BillsView : DeskView
         currency.Text = b?.Currency ?? Fmt.DefaultCurrency;
         amountRow.Children.Add(amount); amountRow.Children.Add(currency);
         form.Add(L.T("Monto (opcional)"), amountRow);
-        var due = form.Add(L.T("Próximo vencimiento"), new TextBox { Width = 160, HorizontalAlignment = HorizontalAlignment.Left, Text = Fmt.DateBox(b?.NextDue) }, L.T("hoy, viernes, 20/12, +1m…"));
+        var due = form.Add(L.T("Próximo vencimiento"), new DateField { Date = b?.NextDue });
         var repeat = form.Add(L.T("Se repite"), new ComboBox { Width = 220, HorizontalAlignment = HorizontalAlignment.Left });
         foreach (var (label, value) in new[] { (L.T("No se repite"), ""), (L.T("Todos los meses"), "m1"), (L.T("Cada 2 meses"), "m2"), (L.T("Cada 3 meses"), "m3"), (L.T("Cada 6 meses"), "m6"), (L.T("Todos los años"), "y"), (L.T("Todas las semanas"), "w") })
             repeat.Items.Add(new ComboBoxItem { Content = label, Tag = value });
@@ -201,7 +201,7 @@ public sealed class BillsView : DeskView
             if (!Fmt.TryMoney(amount.Text, out cents)) return L.T("No entiendo ese monto.");
             string cur = currency.Text.Trim().ToUpperInvariant();
             if (cur.Length != 3 || !cur.All(char.IsAsciiLetterUpper)) return L.T("La moneda va en código de 3 letras: ARS, USD, EUR…");
-            if (!QuickParse.TryDate(due.Text, Clock.Today, out dueDate)) return L.T("No entiendo esa fecha. Probá: hoy, mañana, viernes, 25/11, +3d");
+            dueDate = due.Date;
             if (!int.TryParse(remind.Text, out days) || days is < 0 or > 60) return L.T("Avisar: de 0 a 60 días antes.");
             if ((string)((ComboBoxItem)repeat.SelectedItem).Tag != "" && dueDate == null) return L.T("Para que se repita necesita una fecha de vencimiento.");
             return null;

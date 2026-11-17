@@ -215,7 +215,13 @@ public partial class App : Application
         Db.Configure(path, backups);
         try
         {
-            int version = Db.Initialize(c => Sections.SeedDefaults(c, L.T("Trabajo"), L.T("Personal")));
+            int version = Db.Initialize(c =>
+            {
+                Sections.SeedDefaults(c, L.T("Trabajo"), L.T("Personal"));
+                // The redesign: open topics become tasks once (a verified backup is taken first).
+                int converted = Redesign.ConvertTopics(c, L.T, () => Backup.Run(c, Db.BackupDir, "pre-redesign"));
+                if (converted > 0) Log.Info("redesign: " + converted + " topic(s) converted to tasks");
+            });
             Log.Info("database " + Db.Path + " · schema v" + version);
             return true;
         }
@@ -319,7 +325,20 @@ public partial class App : Application
     {
         try { Appearance = AppearanceStore.Load(AppearanceStore.PathName); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException) { Appearance = new(); }
+        UpgradeDesign();
         ApplyAppearance(Appearance);
+    }
+
+    /// <summary>Once, after the redesign: Windows' own font (Inter rendered thin and uneven in WPF) and a capture key
+    /// that does not collide with Claude's Ctrl+Alt+Space. Later changes in Personalize or Options are kept.</summary>
+    void UpgradeDesign()
+    {
+        var st = Store.Settings;
+        if (st.DesignVersion >= 2 || IsShot) return;
+        if (Appearance.UiFont == "inter") { Appearance = Appearance with { UiFont = "system" }; SaveAppearance(); }
+        if (st.HotkeyCapture == "Ctrl+Alt+Space") st.HotkeyCapture = "Ctrl+Shift+Space";
+        st.DesignVersion = 2;
+        Store.SaveSettings();
     }
 
     public void ApplyAppearance(AppearanceSettings settings)
@@ -422,9 +441,10 @@ public partial class App : Application
             }
         }
         catch (Microsoft.Data.Sqlite.SqliteException) { }
+        Item(L.T("Bandeja de entrada"), "", () => Navigate("inbox"));
         Item(L.T("Hoy"), "", () => Navigate("today"));
-        Item(L.T("Pendientes"), "", () => Navigate("tasks"));
-        Item(L.T("Temas"), "", () => Navigate("topics"));
+        Item(L.T("Próximos 7 días"), "", () => Navigate("upcoming"));
+        Item(L.T("Calendario"), "", () => Navigate("calendar"));
         Item(L.T("Enlaces"), "", () => Navigate("links"));
         menu.Items.Add(new Separator());
         Item(L.T("Personalizar…"), "", () => { ShowMain(); OpenPersonalization(main!); });
@@ -455,7 +475,7 @@ public partial class App : Application
 
     public void Navigate(string view) { ShowMain(); main?.Navigate(view); }
 
-    /// <summary>Quick capture (Ctrl+Alt+Space): a small card next to the cursor.</summary>
+    /// <summary>Quick capture (Ctrl+Shift+Space by default): a small card next to the cursor.</summary>
     public void QuickCapture() => QuickCaptureWindow.Toggle();
 
     public void ExitApp()
@@ -472,12 +492,20 @@ public partial class App : Application
     // ------------------------------------------------------------------ hotkeys
     public string CaptureHotkeyText { get; private set; } = "";
     const int HotkeyQuickCapture = 1, HotkeyLauncher = 2;
+    static readonly string[] CaptureFallbacks = ["Ctrl+Shift+Space", "Ctrl+Alt+N", "Ctrl+Shift+Alt+Space", "Win+Alt+N"];
 
     void RegisterHotkeys()
     {
         var st = Store.Settings;
         string fails = "";
         if (hotkeys!.Register(HotkeyQuickCapture, st.HotkeyCapture)) CaptureHotkeyText = st.HotkeyCapture;
+        else if (CaptureFallbacks.FirstOrDefault(k => k != st.HotkeyCapture && hotkeys.Register(HotkeyQuickCapture, k)) is string other)
+        {
+            // Another app holds the key (Claude uses Ctrl+Alt+Space): take a free one and say which.
+            fails += L.F("{0} lo usa otra aplicación. La captura rápida queda en {1} (cambialo en Opciones).", BuzzDesk.MainWindow.KeyName(st.HotkeyCapture), BuzzDesk.MainWindow.KeyName(other)) + "\n";
+            st.HotkeyCapture = other; Store.SaveSettings();
+            CaptureHotkeyText = other;
+        }
         else { CaptureHotkeyText = ""; fails += L.F("No se pudo registrar {0}.", st.HotkeyCapture) + "\n"; }
         if (!hotkeys.Register(HotkeyLauncher, st.HotkeyLauncher)) fails += L.F("No se pudo registrar {0}.", st.HotkeyLauncher) + "\n";
         // Another app may hold a key: say which, once (BuzzDesk keeps working, the menus still open everything).

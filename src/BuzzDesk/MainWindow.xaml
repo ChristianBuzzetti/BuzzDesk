@@ -26,10 +26,15 @@
                   <MenuItem Header="{local:T 'Salir'}" Click="ExitClick"/>
                 </MenuItem>
                 <MenuItem Header="{local:T 'Ir a'}" Tag="&#xE8AB;">
-                  <MenuItem Header="{local:T 'Hoy'}" InputGestureText="Ctrl+1" Click="GoTodayClick"/>
-                  <MenuItem Header="{local:T 'Pendientes'}" InputGestureText="Ctrl+2" Click="GoTasksClick"/>
-                  <MenuItem Header="{local:T 'Temas'}" InputGestureText="Ctrl+3" Click="GoTopicsClick"/>
-                  <MenuItem Header="{local:T 'Enlaces'}" InputGestureText="Ctrl+4" Click="GoLinksClick"/>
+                  <MenuItem Header="{local:T 'Bandeja de entrada'}" InputGestureText="Ctrl+1" Tag="inbox" Click="GoClick"/>
+                  <MenuItem Header="{local:T 'Hoy'}" InputGestureText="Ctrl+2" Tag="today" Click="GoClick"/>
+                  <MenuItem Header="{local:T 'Próximos 7 días'}" InputGestureText="Ctrl+3" Tag="upcoming" Click="GoClick"/>
+                  <MenuItem Header="{local:T 'Calendario'}" InputGestureText="Ctrl+4" Tag="calendar" Click="GoClick"/>
+                  <MenuItem Header="{local:T 'Algún día'}" InputGestureText="Ctrl+5" Tag="someday" Click="GoClick"/>
+                  <MenuItem Header="{local:T 'Todos los pendientes'}" InputGestureText="Ctrl+6" Tag="tasks" Click="GoClick"/>
+                  <Separator/>
+                  <MenuItem Header="{local:T 'Hábitos'}" Tag="habits" Click="GoClick"/>
+                  <MenuItem Header="{local:T 'Enlaces'}" Tag="links" Click="GoClick"/>
                   <Separator/>
                   <MenuItem Header="{local:T 'Buscar en todo'}" InputGestureText="Ctrl+F" Click="FocusSearchClick"/>
                 </MenuItem>
@@ -70,7 +75,7 @@
         <Border BorderBrush="{DynamicResource StrongBorder}" BorderThickness="0,0,0,1" Background="{DynamicResource SubbarHairlines}">
           <Border Padding="{DynamicResource ToolbarPadding}">
             <DockPanel>
-              <Button DockPanel.Dock="Left" x:Name="QuickCaptureButton" VerticalAlignment="Center" Background="{DynamicResource Accent}" Foreground="{DynamicResource OnAccent}" BorderBrush="{DynamicResource Accent}" Click="QuickCaptureClick" Margin="0,0,8,0" ToolTip="{local:T 'Crear un pendiente, una nota o un recordatorio en dos segundos'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE710;" FontSize="12" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Captura rápida'}" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock x:Name="CaptureKeyHint" Text="Ctrl Alt Space" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Opacity="0.75" Margin="10,0,0,0" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button DockPanel.Dock="Left" x:Name="QuickCaptureButton" VerticalAlignment="Center" Background="{DynamicResource Accent}" Foreground="{DynamicResource OnAccent}" BorderBrush="{DynamicResource Accent}" Click="QuickCaptureClick" Margin="0,0,8,0" ToolTip="{local:T 'Crear un pendiente, una nota o un recordatorio en dos segundos'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE710;" FontSize="12" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Captura rápida'}" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock x:Name="CaptureKeyHint" Text="Ctrl Shift Space" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Opacity="0.75" Margin="10,0,0,0" VerticalAlignment="Center"/></StackPanel></Button>
               <Border DockPanel.Dock="Left" Width="1" Height="22" Background="{DynamicResource FaintBorder}" Margin="2,0,10,0"/>
               <!-- Each view puts its own actions here. -->
               <StackPanel x:Name="ViewToolbar" Orientation="Horizontal" ClipToBounds="True" VerticalAlignment="Center"/>
@@ -94,7 +99,7 @@
             <TextBlock x:Name="StatusText" Text="{local:T 'Listo'}" Foreground="{DynamicResource Muted}" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,10,0"/>
           </DockPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-            <Button Style="{StaticResource StatusSegment}" Click="QuickCaptureClick" ToolTip="{local:T 'Captura rápida'}"><StackPanel Orientation="Horizontal"><TextBlock x:Name="StatusCaptureKey" Text="Ctrl+Alt+Space" Foreground="{DynamicResource Accent}" FontWeight="SemiBold" Margin="0,0,6,0"/><TextBlock Text="{local:T 'capturar'}" Foreground="{DynamicResource Muted}"/></StackPanel></Button>
+            <Button Style="{StaticResource StatusSegment}" Click="QuickCaptureClick" ToolTip="{local:T 'Captura rápida'}"><StackPanel Orientation="Horizontal"><TextBlock x:Name="StatusCaptureKey" Text="Ctrl+Shift+Space" Foreground="{DynamicResource Accent}" FontWeight="SemiBold" Margin="0,0,6,0"/><TextBlock Text="{local:T 'capturar'}" Foreground="{DynamicResource Muted}"/></StackPanel></Button>
             <Border BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="8,2,4,2"/>
             <Button Style="{StaticResource StatusSegment}" Click="ZoneStatusClick" ToolTip="{local:T 'Zona horaria'}"><StackPanel Orientation="Horizontal"><TextBlock Text="TZ" Foreground="{DynamicResource Muted}" Margin="0,0,6,0"/><TextBlock x:Name="ZoneStatus" Foreground="{DynamicResource Ink}" FontWeight="SemiBold"/></StackPanel></Button>
             <Border BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="8,2,4,2"/>
@@ -119,19 +124,24 @@
           </StackPanel>
           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
-              <TextBlock Style="{StaticResource NavLabel}" Text="{local:T 'ESCRITORIO'}"/>
+              <!-- The redesign follows the task managers people know (Todoist, TickTick, Things): inbox, today, the
+                   next 7 days, a calendar and someday; then habits, projects and the rest under "Más". -->
+              <RadioButton x:Name="NavInbox" Style="{StaticResource NavItem}" GroupName="Nav" Tag="inbox" Checked="NavChecked" Margin="0,8,0,1"><DockPanel><TextBlock x:Name="NavInboxCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE715;"/><TextBlock Text="{local:T 'Bandeja de entrada'}"/></DockPanel></RadioButton>
               <RadioButton x:Name="NavToday" Style="{StaticResource NavItem}" GroupName="Nav" Tag="today" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavTodayCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE706;"/><TextBlock Text="{local:T 'Hoy'}"/></DockPanel></RadioButton>
-              <RadioButton x:Name="NavTasks" Style="{StaticResource NavItem}" GroupName="Nav" Tag="tasks" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavTasksCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE73A;"/><TextBlock Text="{local:T 'Pendientes'}"/></DockPanel></RadioButton>
-              <RadioButton x:Name="NavTopics" Style="{StaticResource NavItem}" GroupName="Nav" Tag="topics" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavTopicsCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE8BD;"/><TextBlock Text="{local:T 'Temas'}"/></DockPanel></RadioButton>
-              <RadioButton x:Name="NavLinks" Style="{StaticResource NavItem}" GroupName="Nav" Tag="links" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavLinksCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE71B;"/><TextBlock Text="{local:T 'Enlaces'}"/></DockPanel></RadioButton>
-              <TextBlock Style="{StaticResource NavLabel}" Text="{local:T 'PERSONAL'}"/>
-              <RadioButton x:Name="NavHabits" Style="{StaticResource NavItem}" GroupName="Nav" Tag="habits" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavHabitsCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE9D9;"/><TextBlock Text="{local:T 'Hábitos'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavUpcoming" Style="{StaticResource NavItem}" GroupName="Nav" Tag="upcoming" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavUpcomingCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE8C0;"/><TextBlock Text="{local:T 'Próximos 7 días'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavCalendar" Style="{StaticResource NavItem}" GroupName="Nav" Tag="calendar" Checked="NavChecked"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE787;"/><TextBlock Text="{local:T 'Calendario'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavSomeday" Style="{StaticResource NavItem}" GroupName="Nav" Tag="someday" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavSomedayCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE7B8;"/><TextBlock Text="{local:T 'Algún día'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavTasks" Style="{StaticResource NavItem}" GroupName="Nav" Tag="tasks" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavTasksCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE73A;"/><TextBlock Text="{local:T 'Todos'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavDone" Style="{StaticResource NavItem}" GroupName="Nav" Tag="done" Checked="NavChecked"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE930;"/><TextBlock Text="{local:T 'Completados'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavHabits" Style="{StaticResource NavItem}" GroupName="Nav" Tag="habits" Checked="NavChecked" Margin="0,10,0,1"><DockPanel><TextBlock x:Name="NavHabitsCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE9D9;"/><TextBlock Text="{local:T 'Hábitos'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavSearch" Style="{StaticResource NavItem}" GroupName="Nav" Tag="search" Checked="NavChecked" Visibility="Collapsed"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE721;"/><TextBlock Text="{local:T 'Resultados'}"/></DockPanel></RadioButton>
+              <!-- Areas and projects (filled once the database exists). -->
+              <StackPanel x:Name="NavSectionsGroup"/>
+              <TextBlock Style="{StaticResource NavLabel}" Text="{local:T 'MÁS'}"/>
               <RadioButton x:Name="NavLists" Style="{StaticResource NavItem}" GroupName="Nav" Tag="lists" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavListsCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE762;"/><TextBlock Text="{local:T 'Listas'}"/></DockPanel></RadioButton>
               <RadioButton x:Name="NavBills" Style="{StaticResource NavItem}" GroupName="Nav" Tag="bills" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavBillsCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE8C7;"/><TextBlock Text="{local:T 'Pagos'}" TextTrimming="CharacterEllipsis"/></DockPanel></RadioButton>
-              <RadioButton x:Name="NavDates" Style="{StaticResource NavItem}" GroupName="Nav" Tag="dates" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavDatesCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE787;"/><TextBlock Text="{local:T 'Fechas importantes'}" TextTrimming="CharacterEllipsis"/></DockPanel></RadioButton>
-              <RadioButton x:Name="NavSearch" Style="{StaticResource NavItem}" GroupName="Nav" Tag="search" Checked="NavChecked" Visibility="Collapsed"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE721;"/><TextBlock Text="{local:T 'Resultados'}"/></DockPanel></RadioButton>
-              <!-- Areas and projects (filled by the Tasks view once the database exists). -->
-              <StackPanel x:Name="NavSectionsGroup"/>
+              <RadioButton x:Name="NavDates" Style="{StaticResource NavItem}" GroupName="Nav" Tag="dates" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavDatesCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xED55;"/><TextBlock Text="{local:T 'Fechas importantes'}" TextTrimming="CharacterEllipsis"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavLinks" Style="{StaticResource NavItem}" GroupName="Nav" Tag="links" Checked="NavChecked"><DockPanel><TextBlock x:Name="NavLinksCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE71B;"/><TextBlock Text="{local:T 'Enlaces'}"/></DockPanel></RadioButton>
             </StackPanel>
           </ScrollViewer>
         </DockPanel>

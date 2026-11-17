@@ -45,7 +45,6 @@ public partial class MainWindow : Window
         TodayView.Blocks.Add(ReminderUi.TodayBlock);
         TodayView.Blocks.Add(BillsView.TodayBlock);
         TodayView.Blocks.Add(DatesView.TodayBlock);
-        TodayView.Blocks.Add(TopicsView.TodayBlock);
         TodayView.Blocks.Add(InboxUi.TodayBlock);
         TodayView.Blocks.Add(LinkUi.TodayBlock);
         App.Current.DayChanged += () => ScheduleRefresh(false);
@@ -84,6 +83,10 @@ public partial class MainWindow : Window
         NavTodayCount.Text = dueToday + overdue > 0 ? (dueToday + overdue).ToString() : "";
         NavTodayCount.SetResourceReference(TextBlock.ForegroundProperty, overdue > 0 ? "ErrorInk" : "LineNumber");
         NavTasksCount.Text = open > 0 ? open.ToString() : "";
+        var (inbox, week, noDate) = Tasks.NavCounts(Clock.Today);
+        NavInboxCount.Text = inbox > 0 ? inbox.ToString() : "";
+        NavUpcomingCount.Text = week > 0 ? week.ToString() : "";
+        NavSomedayCount.Text = noDate > 0 ? noDate.ToString() : "";
         var habits = Habits.List(Clock.Today).Where(h => h.AppliesOn(Clock.Today)).ToList();
         NavHabitsCount.Text = habits.Count > 0 ? habits.Count(h => h.DoneToday) + "/" + habits.Count : "";
         var lists = Checklists.List();
@@ -97,10 +100,6 @@ public partial class MainWindow : Window
         NavDatesCount.Text = soonDates > 0 ? soonDates.ToString() : "";
         int links = Links.Count();
         NavLinksCount.Text = links > 0 ? links.ToString() : "";
-        var (review, _, openTopics) = Topics.Counts(Clock.Today);
-        NavTopicsCount.Text = review > 0 ? review + " / " + openTopics : openTopics > 0 ? openTopics.ToString() : "";
-        NavTopicsCount.SetResourceReference(TextBlock.ForegroundProperty, review > 0 ? "Accent" : "LineNumber");
-        NavTopics.ToolTip = review > 0 ? L.F("{0} para revisar hoy", review) : null;
         DbStatus.Text = "buzzdesk.db · v" + Migrator.All.Count;
     }
 
@@ -111,7 +110,7 @@ public partial class MainWindow : Window
     {
         NavSectionsGroup.Children.Clear();
         sectionNav.Clear();
-        var label = new TextBlock { Text = L.T("ÁREAS Y PROYECTOS") };
+        var label = new TextBlock { Text = L.T("PROYECTOS") };
         label.SetResourceReference(StyleProperty, "NavLabel");
         NavSectionsGroup.Children.Add(label);
         foreach (var s in Sections.All())
@@ -131,7 +130,7 @@ public partial class MainWindow : Window
             NavSectionsGroup.Children.Add(button);
             sectionNav[s.Id] = (button, count);
         }
-        var add = new Button { Content = NavRow("\uE710", L.T("Nueva área")) };
+        var add = new Button { Content = NavRow("\uE710", L.T("Nuevo proyecto")) };
         add.SetResourceReference(StyleProperty, "NavAction");
         add.Click += (_, _) => NewSection(null);
         NavSectionsGroup.Children.Add(add);
@@ -157,7 +156,7 @@ public partial class MainWindow : Window
     {
         var menu = new ContextMenu();
         void Add(string header, Action click) { var m = new MenuItem { Header = header }; m.Click += (_, _) => click(); menu.Items.Add(m); }
-        if (s.IsArea) Add(L.T("Nuevo proyecto…"), () => NewSection(s.Id));
+        if (s.IsArea) Add(L.T("Nuevo subproyecto…"), () => NewSection(s.Id));
         Add(L.T("Renombrar…"), () =>
         {
             if (PromptWindow.Ask(this, L.T("Renombrar"), L.T("Nuevo nombre:"), s.Name) is { } name && name.Trim().Length > 0) TrySection(() => Sections.Rename(s.Id, name));
@@ -172,7 +171,7 @@ public partial class MainWindow : Window
 
     public void NewSection(long? parentId)
     {
-        string title = parentId == null ? L.T("Nueva área") : L.T("Nuevo proyecto");
+        string title = parentId == null ? L.T("Nuevo proyecto") : L.T("Nuevo subproyecto");
         if (PromptWindow.Ask(this, title, L.T("Nombre:"), "") is not { } name || name.Trim().Length == 0) return;
         TrySection(() => Sections.Add(name, parentId));
     }
@@ -181,12 +180,16 @@ public partial class MainWindow : Window
     {
         try { work(); }
         catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 19)   // SQLITE_CONSTRAINT: the name exists
-        { PromptWindow.Info(this, L.T("Ya existe"), L.T("Ya hay un área o proyecto con ese nombre.")); }
+        { PromptWindow.Info(this, L.T("Ya existe"), L.T("Ya hay un proyecto con ese nombre.")); }
     }
 
     /// <summary>Opens a task in Tasks (from Today, search or a reminder).</summary>
     public void OpenTask(long id)
     {
+        // Lists with their own editor show it in place; the rest go to "All tasks".
+        if (current is TodayView today) { today.Select(id); return; }
+        if (current is CalendarView cal) { cal.Select(id); return; }
+        if (current is TasksView { Id: not "done" } list && Tasks.Get(id) is { IsOpen: true }) { list.Select(id); return; }
         Navigate("tasks");
         ((TasksView)views["tasks"]).Select(id);
         SyncNavSelection();
@@ -195,13 +198,22 @@ public partial class MainWindow : Window
     void SyncNavSelection()
     {
         if (current is TasksView { SectionId: long sid } && sectionNav.TryGetValue(sid, out var nav)) { if (nav.button.IsChecked != true) nav.button.IsChecked = true; }
-        else if (current is TasksView && NavTasks.IsChecked != true) NavTasks.IsChecked = true;
+        else if (current != null && NavFor(current.Id) is RadioButton r && r.IsChecked != true) r.IsChecked = true;
     }
+
+    static readonly string[] Keys = ["inbox", "today", "upcoming", "calendar", "someday", "tasks", "done", "habits", "lists", "bills", "dates", "links", "search", "topics"];
+    RadioButton? NavFor(string key) => key switch
+    {
+        "inbox" => NavInbox, "today" => NavToday, "upcoming" => NavUpcoming, "calendar" => NavCalendar, "someday" => NavSomeday, "tasks" => NavTasks,
+        "done" => NavDone, "links" => NavLinks, "search" => NavSearch, "habits" => NavHabits, "lists" => NavLists, "bills" => NavBills, "dates" => NavDates,
+        _ => null,
+    };
 
     // ================================================================== navigation
     DeskView CreateView(string key) => key switch
     {
-        "tasks" => new TasksView(),
+        "inbox" or "upcoming" or "someday" or "tasks" or "done" => new TasksView(key),
+        "calendar" => new CalendarView(),
         "topics" => new TopicsView(),
         "links" => new LinksView(),
         "search" => new SearchView(),
@@ -214,17 +226,18 @@ public partial class MainWindow : Window
 
     public void Navigate(string key)
     {
-        if (key is not ("today" or "tasks" or "topics" or "links" or "search" or "habits" or "lists" or "bills" or "dates")) key = "today";
+        if (!Keys.Contains(key)) key = "today";
         if (!views.TryGetValue(key, out var view)) { view = CreateView(key); views[key] = view; }
         current = view;
         ViewHost.Content = view;
         ViewToolbar.Children.Clear();
         view.BuildToolbar(ViewToolbar);
         view.Shown();
-        var nav = key switch { "tasks" => NavTasks, "topics" => NavTopics, "links" => NavLinks, "search" => NavSearch, "habits" => NavHabits, "lists" => NavLists, "bills" => NavBills, "dates" => NavDates, _ => NavToday };
+        var nav = NavFor(key);
         if (view is TasksView { SectionId: long sid } && sectionNav.TryGetValue(sid, out var sn)) { if (sn.button.IsChecked != true) sn.button.IsChecked = true; }
-        else if (nav.IsChecked != true) nav.IsChecked = true;
-        if (key != "search" && Store.Settings.LastNav != key) { Store.Settings.LastNav = key; Store.SaveSettings(); }
+        else if (nav != null && nav.IsChecked != true) nav.IsChecked = true;
+        else if (nav == null) foreach (var r in new[] { NavInbox, NavToday, NavUpcoming, NavCalendar, NavSomeday, NavTasks, NavDone }) r.IsChecked = false;
+        if (key is not ("search" or "topics") && Store.Settings.LastNav != key) { Store.Settings.LastNav = key; Store.SaveSettings(); }
     }
 
     void NavChecked(object sender, RoutedEventArgs e)
@@ -233,7 +246,7 @@ public partial class MainWindow : Window
         if (key.StartsWith("section:", StringComparison.Ordinal))
         {
             long id = long.Parse(key[8..]);
-            if (current is not TasksView) Navigate("tasks");
+            if (current is not TasksView { Id: "tasks" }) Navigate("tasks");
             ((TasksView)views["tasks"]).SetSection(id);
             return;
         }
@@ -241,10 +254,7 @@ public partial class MainWindow : Window
         if (current?.Id != key) Navigate(key);
     }
 
-    void GoTodayClick(object sender, RoutedEventArgs e) => Navigate("today");
-    void GoTasksClick(object sender, RoutedEventArgs e) => Navigate("tasks");
-    void GoTopicsClick(object sender, RoutedEventArgs e) => Navigate("topics");
-    void GoLinksClick(object sender, RoutedEventArgs e) => Navigate("links");
+    void GoClick(object sender, RoutedEventArgs e) { if (sender is MenuItem { Tag: string key }) Navigate(key); }
 
     /// <summary>Reloads the visible view (data changed elsewhere: quick capture, a reminder, another view).</summary>
     public void RefreshAll() { current?.Refresh(); }
@@ -494,7 +504,8 @@ public partial class MainWindow : Window
         switch (action)
         {
             case "quick": App.Current.QuickCapture(); break;
-            case "today": case "tasks": case "topics": case "links": Navigate(action); Activate(); break;
+            case "today": case "tasks": case "links": case "inbox": case "upcoming": case "calendar": case "someday": Navigate(action); Activate(); break;
+            case "topics": Navigate("tasks"); Activate(); break;
             case "search": Activate(); FocusSearchClick(this, new RoutedEventArgs()); break;
             case "personalize": App.Current.OpenPersonalization(this); break;
             case "ai": AiSettingsClick(this, new RoutedEventArgs()); break;
@@ -529,10 +540,12 @@ public partial class MainWindow : Window
             if (e.Key == Key.Enter && views.TryGetValue("search", out var sv)) { searchDelay?.Stop(); RunSearch(null, EventArgs.Empty); ((SearchView)sv).OpenFirst(); e.Handled = true; return; }
             if (e.Key == Key.Down && current is SearchView s1) { s1.FocusList(); e.Handled = true; return; }
         }
-        if (ctrl && e.Key is Key.D1 or Key.NumPad1) { Navigate("today"); e.Handled = true; }
-        else if (ctrl && e.Key is Key.D2 or Key.NumPad2) { Navigate("tasks"); e.Handled = true; }
-        else if (ctrl && e.Key is Key.D3 or Key.NumPad3) { Navigate("topics"); e.Handled = true; }
-        else if (ctrl && e.Key is Key.D4 or Key.NumPad4) { Navigate("links"); e.Handled = true; }
+        string? go = !ctrl ? null : e.Key switch
+        {
+            Key.D1 or Key.NumPad1 => "inbox", Key.D2 or Key.NumPad2 => "today", Key.D3 or Key.NumPad3 => "upcoming",
+            Key.D4 or Key.NumPad4 => "calendar", Key.D5 or Key.NumPad5 => "someday", Key.D6 or Key.NumPad6 => "tasks", _ => null,
+        };
+        if (go != null) { Navigate(go); e.Handled = true; }
         else if (ctrl && e.Key == Key.N) { current?.New(); e.Handled = true; }
         else if (ctrl && e.Key == Key.L) { LauncherWindow.Toggle(); e.Handled = true; }
     }

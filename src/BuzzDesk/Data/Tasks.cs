@@ -49,6 +49,8 @@ public static class Tasks
             case TaskScope.Upcoming: sql.Append(" AND t.status = 'open' AND t.due_date > $today"); break;
             case TaskScope.NoDate: sql.Append(" AND t.status = 'open' AND t.due_date IS NULL"); break;
             case TaskScope.Done: sql.Append(" AND t.status = 'done'"); break;
+            case TaskScope.Inbox: sql.Append(" AND t.status = 'open' AND t.section_id IS NULL"); break;
+            case TaskScope.Week: sql.Append(" AND t.status = 'open' AND t.due_date <= $week"); args.Add(("$week", Db.Date(today.AddDays(6)))); break;
         }
         if (f.SectionId is long sid) { sql.Append(" AND (t.section_id = $sid OR t.section_id IN (SELECT id FROM section WHERE parent_id = $sid))"); args.Add(("$sid", sid)); }
         if (f.TagId is long tid) { sql.Append(" AND EXISTS (SELECT 1 FROM task_tag x WHERE x.task_id = t.id AND x.tag_id = $tid)"); args.Add(("$tid", tid)); }
@@ -79,7 +81,46 @@ public static class Tasks
         return ((int)r.GetInt64(0), (int)r.GetInt64(1), (int)r.GetInt64(2));
     });
 
+    /// <summary>Sidebar counts: open tasks without an area or project (the inbox), due within the next 7 days
+    /// (overdue included) and without a date.</summary>
+    public static (int inbox, int week, int noDate) NavCounts(DateOnly today) => Repo.Read(c =>
+    {
+        using var cmd = Db.Cmd(c, """
+            SELECT coalesce(sum(section_id IS NULL), 0), coalesce(sum(due_date <= $week), 0), coalesce(sum(due_date IS NULL), 0)
+              FROM task WHERE status = 'open' AND deleted_utc IS NULL AND parent_task_id IS NULL
+            """, ("$week", Db.Date(today.AddDays(6))));
+        using var r = cmd.ExecuteReader();
+        r.Read();
+        return ((int)r.GetInt64(0), (int)r.GetInt64(1), (int)r.GetInt64(2));
+    });
+
+    /// <summary>Top-level tasks dated between two days (both included) for the calendar: open ones, and done ones
+    /// too when <paramref name="withDone"/>.</summary>
+    public static List<TaskItem> Between(DateOnly from, DateOnly to, bool withDone = true) => Repo.Read(c => Db.Query(c,
+        Select + " WHERE t.deleted_utc IS NULL AND t.parent_task_id IS NULL AND t.due_date BETWEEN $f AND $t" +
+        (withDone ? " AND t.status <> 'cancelled'" : " AND t.status = 'open'") +
+        " ORDER BY t.due_date, t.status <> 'open', t.due_time IS NULL, t.due_time, t.priority DESC, t.sort_order, t.id",
+        Map, ("$f", Db.Date(from)), ("$t", Db.Date(to))));
+
     // ------------------------------------------------------------------ writes
+    /// <summary>Moves a task to another day (drag and drop in the calendar). Unlike <see cref="Postpone"/> it is
+    /// not counted as a postponement when it moves earlier; pending reminders move by the same number of days.</summary>
+    public static void Reschedule(long id, DateOnly newDue) => Repo.Write("task", (c, _) =>
+    {
+        var old = Db.Scalar<string>(c, "SELECT due_date FROM task WHERE id = $id", ("$id", id));
+        bool later = old != null && newDue > Db.ParseDate(old);
+        Db.Exec(c, "UPDATE task SET due_date = $d, postpone_count = postpone_count + $later, updated_utc = $now WHERE id = $id",
+            ("$d", Db.Date(newDue)), ("$later", later ? 1 : 0), ("$now", Db.NowUtc()), ("$id", id));
+        if (old != null)
+        {
+            int shift = newDue.DayNumber - Db.ParseDate(old).DayNumber;
+            Db.Exec(c, """
+                UPDATE reminder SET remind_at_utc = strftime('%Y-%m-%dT%H:%M:%SZ', remind_at_utc, $shift || ' days'), snoozed_until_utc = NULL, fired_utc = NULL
+                 WHERE task_id = $id AND dismissed_utc IS NULL
+                """, ("$shift", shift), ("$id", id));
+        }
+    });
+
     public sealed record Draft(string Title, long? SectionId = null, int Priority = 0, DateOnly? DueDate = null, TimeOnly? DueTime = null,
         string? Notes = null, IReadOnlyList<string>? Tags = null, RecurrenceRule? Recurrence = null, long? ParentId = null, long? TopicId = null);
 
